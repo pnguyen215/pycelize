@@ -1,0 +1,161 @@
+"""
+SQL Generation Service Implementation
+
+This module provides SQL statement generation from DataFrame data
+with support for multiple database types and auto-increment columns.
+"""
+
+import os
+from typing import Any, Dict, List, Optional
+from datetime import datetime
+import pandas as pd
+
+from app.core.config import Config
+from app.core.exceptions import SQLGenerationError
+from app.core.logging import get_logger
+from app.models.enums import DatabaseType, SQLAutoIncrementType
+from app.models.request import SQLGenerationRequest, AutoIncrementConfig
+from app.builders.sql_builder import SQLBuilder
+
+logger = get_logger(__name__)
+
+
+class SQLGenerationService:
+    """
+    Service for SQL statement generation.
+
+    This service generates SQL INSERT statements from DataFrame data
+    with support for:
+    - Multiple database types (PostgreSQL, MySQL, SQLite)
+    - Auto-increment columns and sequences
+    - Custom SQL templates
+    - Transaction wrapping
+    - Batch processing
+
+    Example:
+        >>> service = SQLGenerationService(config)
+        >>> request = SQLGenerationRequest(table_name='users', ...)
+        >>> sql_statements = service.generate_sql(df, request)
+    """
+
+    def __init__(self, config: Config):
+        """
+        Initialize SQLGenerationService with configuration.
+
+        Args:
+            config: Application configuration instance
+        """
+        self.config = config
+        self.output_folder = config.get("file.output_folder", "outputs")
+        self.default_batch_size = config.get("sql.default_batch_size", 1000)
+        self.include_transaction = config.get("sql.include_transaction", True)
+
+        os.makedirs(self.output_folder, exist_ok=True)
+
+    def generate_sql(
+        self, data: pd.DataFrame, request: SQLGenerationRequest
+    ) -> Dict[str, Any]:
+        """
+        Generate SQL statements from DataFrame.
+
+        Args:
+            data: Source DataFrame
+            request: SQL generation request configuration
+
+        Returns:
+            Dictionary containing SQL statements and metadata
+
+        Raises:
+            SQLGenerationError: If SQL generation fails
+        """
+        logger.info(
+            f"Generating SQL for table '{request.table_name}' " f"with {len(data)} rows"
+        )
+
+        try:
+            # Parse database type
+            db_type = DatabaseType.from_string(request.database_type)
+
+            # Configure SQL builder
+            builder = SQLBuilder()
+            builder.with_table_name(request.table_name)
+            builder.with_database_type(db_type)
+            builder.with_column_mapping(request.column_mapping)
+            builder.with_transaction(request.include_transaction)
+            builder.with_batch_size(request.batch_size)
+
+            # Configure auto-increment if specified
+            if request.auto_increment and request.auto_increment.enabled:
+                auto_config = request.auto_increment
+                increment_type = SQLAutoIncrementType(auto_config.increment_type)
+
+                builder.with_auto_increment(
+                    column_name=auto_config.column_name,
+                    increment_type=increment_type,
+                    start_value=auto_config.start_value,
+                    sequence_name=auto_config.sequence_name,
+                )
+
+            # Set custom template if provided
+            if request.template:
+                builder.with_template(request.template)
+
+            # Generate SQL statements
+            statements = builder.build_with_header(data)
+
+            result = {
+                "success": True,
+                "table_name": request.table_name,
+                "database_type": request.database_type,
+                "total_rows": len(data),
+                "total_statements": len(statements),
+                "statements": statements,
+                "generated_at": datetime.now().isoformat(),
+            }
+
+            logger.info(f"Generated {len(statements)} SQL statements")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error generating SQL: {str(e)}")
+            raise SQLGenerationError(f"Failed to generate SQL: {str(e)}")
+
+    def export_sql(
+        self, statements: List[str], output_path: str, add_header: bool = True
+    ) -> str:
+        """
+        Export SQL statements to a file.
+
+        Args:
+            statements: List of SQL statements
+            output_path: Path for the output file
+            add_header: Whether to add header comments
+
+        Returns:
+            Path to the created file
+
+        Raises:
+            SQLGenerationError: If export fails
+        """
+        try:
+            logger.info(f"Exporting SQL to: {output_path}")
+
+            with open(output_path, "w", encoding="utf-8") as f:
+                if add_header:
+                    f.write(f"-- Generated by Pycelize\n")
+                    f.write(f"-- Generated at: {datetime.now().isoformat()}\n")
+                    f.write(f"-- Total statements: {len(statements)}\n\n")
+
+                for statement in statements:
+                    f.write(f"{statement}\n")
+
+            logger.info(f"Successfully exported {len(statements)} statements")
+            return output_path
+
+        except Exception as e:
+            logger.error(f"Error exporting SQL: {str(e)}")
+            raise SQLGenerationError(f"Failed to export SQL: {str(e)}")
+
+    def get_supported_databases(self) -> List[str]:
+        """Get list of supported database types."""
+        return [db.value for db in DatabaseType]
