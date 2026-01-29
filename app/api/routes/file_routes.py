@@ -40,41 +40,53 @@ def download_file(filename):
              --output result.xlsx
     """
     try:
+        logger = current_app.logger
         config = current_app.config.get("PYCELIZE")
         output_folder = config.get("file.output_folder", "outputs")
-        
+
+        logger.info(f"Config for file download: {config}")
+        logger.info(f"Download request for file: {filename}")
+
         # Secure the filename to prevent path traversal
         safe_filename = secure_filename(filename)
         file_path = os.path.join(output_folder, safe_filename)
-        
+
+        logger.info(f"Secure filename: {safe_filename}")
+        logger.info(f"Resolved file path: {file_path}")
+
         # Validate that the resolved path is within the output folder
         abs_output_folder = os.path.abspath(output_folder)
         abs_file_path = os.path.abspath(file_path)
-        
+
+        logger.info(f"Absolute file path: {abs_file_path}")
+
         if not abs_file_path.startswith(abs_output_folder + os.sep):
+            logger.error("Attempted path traversal attack detected")
             return jsonify(ResponseBuilder.error("Invalid file path", 400)), 400
-        
+
         # Check if file exists
         if not os.path.exists(file_path):
             return jsonify(ResponseBuilder.error("File not found", 404)), 404
-        
+
         # Determine mimetype based on extension
-        if safe_filename.endswith('.xlsx'):
-            mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        elif safe_filename.endswith('.txt'):
-            mimetype = 'text/plain'
-        elif safe_filename.endswith('.sql'):
-            mimetype = 'text/plain'
+        if safe_filename.endswith(".xlsx"):
+            mimetype = (
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        elif safe_filename.endswith(".txt"):
+            mimetype = "text/plain"
+        elif safe_filename.endswith(".sql"):
+            mimetype = "text/plain"
         else:
-            mimetype = 'application/octet-stream'
-        
+            mimetype = "application/octet-stream"
+
         return send_file(
-            file_path,
+            abs_file_path,
             as_attachment=True,
             download_name=safe_filename,
             mimetype=mimetype,
         )
-    
+
     except Exception as e:
         return jsonify(ResponseBuilder.error(str(e), 500)), 500
 
