@@ -38,7 +38,7 @@ VENV_PIP = $(VENV_DIR)/bin/pip
 # Application settings
 APP_MODULE = run.py
 HOST = 0.0.0.0
-PORT = 5000
+PORT = 5050
 
 # Project directories
 SRC_DIR = app
@@ -227,7 +227,7 @@ docker-run:
 	@echo "$(CYAN)Running Docker container...$(NC)"
 	docker run -d \
 		--name $(DOCKER_CONTAINER) \
-		-p $(PORT):5000 \
+		-p $(PORT):5050 \
 		-v $(PWD)/uploads:/app/uploads \
 		-v $(PWD)/outputs:/app/outputs \
 		-v $(PWD)/logs:/app/logs \
@@ -254,7 +254,7 @@ docker-compose-up:
 	@echo "$(CYAN)Starting with Docker Compose...$(NC)"
 	docker-compose up -d
 	@echo "$(GREEN)✓ Containers started$(NC)"
-	@echo "$(CYAN)Application running at http://localhost:5000$(NC)"
+	@echo "$(CYAN)Application running at http://localhost:5050$(NC)"
 
 docker-compose-down:
 	@echo "$(CYAN)Stopping Docker Compose...$(NC)"

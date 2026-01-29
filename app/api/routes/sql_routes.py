@@ -35,7 +35,7 @@ def get_supported_databases():
         JSON with list of supported databases
 
     Example:
-        curl http://localhost:5000/api/v1/sql/databases
+        curl http://localhost:5050/api/v1/sql/databases
     """
     try:
         config = current_app.config.get("PYCELIZE")
@@ -86,7 +86,7 @@ def generate_sql():
              -F "table_name=users" \
              -F 'column_mapping={"name": "Name", "email": "Email"}' \
              -F "database_type=postgresql" \
-             http://localhost:5000/api/v1/sql/generate
+             http://localhost:5050/api/v1/sql/generate
     """
     try:
         Validators.validate_file_uploaded(request.files.get("file"))

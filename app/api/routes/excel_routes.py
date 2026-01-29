@@ -37,7 +37,7 @@ def get_excel_info():
         JSON with file information (rows, columns, column names, etc.)
 
     Example:
-        curl -X POST -F "file=@data.xlsx" http://localhost:5000/api/v1/excel/info
+        curl -X POST -F "file=@data.xlsx" http://localhost:5050/api/v1/excel/info
     """
     try:
         Validators.validate_file_uploaded(request.files.get("file"))
@@ -91,7 +91,7 @@ def extract_columns():
         curl -X POST -F "file=@data.xlsx" \
              -F 'columns=["name", "email"]' \
              -F "remove_duplicates=true" \
-             http://localhost:5000/api/v1/excel/extract-columns
+             http://localhost:5050/api/v1/excel/extract-columns
     """
     try:
         Validators.validate_file_uploaded(request.files.get("file"))
@@ -164,7 +164,7 @@ def map_columns():
     Example:
         curl -X POST -F "file=@data.xlsx" \
              -F 'mapping={"Customer Name": "name", "Email": {"source": "email", "default": "N/A"}}' \
-             http://localhost:5000/api/v1/excel/map-columns
+             http://localhost:5050/api/v1/excel/map-columns
     """
     try:
         Validators.validate_file_uploaded(request.files.get("file"))

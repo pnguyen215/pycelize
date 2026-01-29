@@ -37,7 +37,7 @@ def main():
 
     # Extract server settings
     host = config.get("app.host", "0.0.0.0") if config else "0.0.0.0"
-    port = config.get("app.port", 5000) if config else 5000
+    port = config.get("app.port", 5050) if config else 5050
     debug = config.get("app.debug", True) if config else True
 
     print(

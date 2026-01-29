@@ -124,7 +124,7 @@ make run
 python run.py
 ```
 
-The application will start at `http://localhost:5000`
+The application will start at `http://localhost:5050`
 
 ## ⚙️ Configuration
 
@@ -137,7 +137,7 @@ app:
   environment: "development"
   debug: true
   host: "0.0.0.0"
-  port: 5000
+  port: 5050
 
 api:
   version: "v1"
@@ -180,7 +180,7 @@ logging:
 
 ### Base URL
 ```
-http://localhost:5000/api/v1
+http://localhost:5050/api/v1
 ```
 
 ### Response Format
@@ -243,14 +243,14 @@ All API responses follow this structure:
 
 ### 1. Health Check
 ```bash
-curl http://localhost:5000/api/v1/health
+curl http://localhost:5050/api/v1/health
 ```
 
 ### 2. Get Excel File Information
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
-  http://localhost:5000/api/v1/excel/info
+  http://localhost:5050/api/v1/excel/info
 ```
 
 ### 3. Extract Columns from Excel
@@ -259,7 +259,7 @@ curl -X POST \
   -F "file=@data.xlsx" \
   -F 'columns=["name", "email", "phone"]' \
   -F "remove_duplicates=true" \
-  http://localhost:5000/api/v1/excel/extract-columns
+  http://localhost:5050/api/v1/excel/extract-columns
 ```
 
 ### 4. Apply Column Mapping
@@ -271,7 +271,7 @@ curl -X POST \
     "Email Address": {"source": "email", "default": "N/A"},
     "Status": {"default": "Active"}
   }' \
-  http://localhost:5000/api/v1/excel/map-columns \
+  http://localhost:5050/api/v1/excel/map-columns \
   --output mapped_data.xlsx
 ```
 
@@ -280,13 +280,13 @@ curl -X POST \
 curl -X POST \
   -F "file=@data.csv" \
   -F "sheet_name=MyData" \
-  http://localhost:5000/api/v1/csv/convert-to-excel \
+  http://localhost:5050/api/v1/csv/convert-to-excel \
   --output converted.xlsx
 ```
 
 ### 6. Get Normalization Types
 ```bash
-curl http://localhost:5000/api/v1/normalization/types
+curl http://localhost:5050/api/v1/normalization/types
 ```
 
 ### 7. Apply Normalization
@@ -299,7 +299,7 @@ curl -X POST \
     {"column_name": "email", "normalization_type": "lowercase"},
     {"column_name": "phone", "normalization_type": "phone_format"}
   ]' \
-  http://localhost:5000/api/v1/normalization/apply \
+  http://localhost:5050/api/v1/normalization/apply \
   --output normalized.xlsx
 ```
 
@@ -321,7 +321,7 @@ curl -X POST \
     "start_value": 1
   }' \
   -F "return_file=true" \
-  http://localhost:5000/api/v1/sql/generate \
+  http://localhost:5050/api/v1/sql/generate \
   --output insert_customers.sql
 ```
 
@@ -334,7 +334,7 @@ curl -X POST \
   -F "database_type=postgresql" \
   -F 'template=INSERT INTO users (id, name, email, created_at) VALUES ({auto_id}, {name}, {email}, {current_timestamp});' \
   -F 'auto_increment={"enabled": true, "column_name": "id", "increment_type": "manual_sequence", "sequence_name": "users_id_seq", "start_value": 100}' \
-  http://localhost:5000/api/v1/sql/generate
+  http://localhost:5050/api/v1/sql/generate
 ```
 
 ### 10. Bind Excel Files
@@ -347,7 +347,7 @@ curl -X POST \
     "Target_Email": "Source_Email",
     "Target_Phone": "Source_Phone"
   }' \
-  http://localhost:5000/api/v1/files/bind \
+  http://localhost:5050/api/v1/files/bind \
   --output bound_result.xlsx
 ```
 
@@ -357,7 +357,7 @@ curl -X POST \
   -F "source_file=@source.xlsx" \
   -F "target_file=@target.xlsx" \
   -F 'column_mapping={"Target_Col": "Source_Col"}' \
-  http://localhost:5000/api/v1/files/bind/preview
+  http://localhost:5050/api/v1/files/bind/preview
 ```
 
 ## 🎨 Design Patterns

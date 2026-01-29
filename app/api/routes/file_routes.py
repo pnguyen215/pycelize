@@ -44,7 +44,7 @@ def bind_excel_files():
              -F "source_file=@source.xlsx" \
              -F "target_file=@target.xlsx" \
              -F 'column_mapping={"Target_Name": "Source_Name", "Target_Email": "Source_Email"}' \
-             http://localhost:5000/api/v1/files/bind \
+             http://localhost:5050/api/v1/files/bind \
              --output result.xlsx
     """
     try:

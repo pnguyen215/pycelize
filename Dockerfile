@@ -5,7 +5,7 @@
 #
 # Usage:
 #   docker build -t pycelize:latest .
-#   docker run -p 5000:5000 pycelize:latest
+#   docker run -p 5050:5050 pycelize:latest
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -80,11 +80,11 @@ RUN mkdir -p uploads outputs logs \
 USER appuser
     
 # Expose port
-EXPOSE 5000
+EXPOSE 5050
     
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-        CMD curl -f http://localhost:5000/api/v1/health || exit 1
+        CMD curl -f http://localhost:5050/api/v1/health || exit 1
     
 # Run the application
 CMD ["python", "run.py"]

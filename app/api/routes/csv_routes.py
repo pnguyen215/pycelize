@@ -36,7 +36,7 @@ def get_csv_info():
         JSON with file information
 
     Example:
-        curl -X POST -F "file=@data.csv" http://localhost:5000/api/v1/csv/info
+        curl -X POST -F "file=@data.csv" http://localhost:5050/api/v1/csv/info
     """
     try:
         Validators.validate_file_uploaded(request.files.get("file"))
@@ -86,7 +86,7 @@ def convert_csv_to_excel():
     Example:
         curl -X POST -F "file=@data.csv" \
              -F "sheet_name=Data" \
-             http://localhost:5000/api/v1/csv/convert-to-excel \
+             http://localhost:5050/api/v1/csv/convert-to-excel \
              --output result.xlsx
     """
     try:

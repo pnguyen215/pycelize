@@ -35,7 +35,7 @@ def get_normalization_types():
         JSON with list of normalization types and descriptions
 
     Example:
-        curl http://localhost:5000/api/v1/normalization/types
+        curl http://localhost:5050/api/v1/normalization/types
     """
     try:
         config = current_app.config.get("PYCELIZE")
@@ -78,7 +78,7 @@ def apply_normalization():
     Example:
         curl -X POST -F "file=@data.xlsx" \
              -F 'normalizations=[{"column_name": "name", "normalization_type": "uppercase"}]' \
-             http://localhost:5000/api/v1/normalization/apply \
+             http://localhost:5050/api/v1/normalization/apply \
              --output normalized.xlsx
     """
     try:
