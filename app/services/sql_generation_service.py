@@ -159,3 +159,80 @@ class SQLGenerationService:
     def get_supported_databases(self) -> List[str]:
         """Get list of supported database types."""
         return [db.value for db in DatabaseType]
+
+    def generate_custom_sql(
+        self,
+        data: pd.DataFrame,
+        template: str,
+        column_mapping: Dict[str, str],
+        auto_increment: Optional[AutoIncrementConfig] = None,
+    ) -> List[str]:
+        """
+        Generate SQL statements using a custom template.
+
+        Args:
+            data: Source DataFrame
+            template: SQL template with placeholders like {column_name}
+            column_mapping: Mapping of placeholder names to DataFrame columns
+            auto_increment: Auto-increment configuration (optional)
+
+        Returns:
+            List of SQL statements
+
+        Raises:
+            SQLGenerationError: If SQL generation fails
+        """
+        logger.info(f"Generating custom SQL with template for {len(data)} rows")
+
+        try:
+            statements = []
+            auto_id = (
+                auto_increment.start_value
+                if auto_increment and auto_increment.enabled
+                else 1
+            )
+
+            for idx, row in data.iterrows():
+                statement = template
+
+                # Replace column placeholders
+                for placeholder, column in column_mapping.items():
+                    if column not in data.columns:
+                        raise SQLGenerationError(
+                            f"Column '{column}' not found in data"
+                        )
+
+                    value = row[column]
+
+                    # Handle NULL values
+                    if pd.isna(value):
+                        sql_value = "NULL"
+                    elif isinstance(value, str):
+                        # Escape single quotes
+                        escaped_value = str(value).replace("'", "''")
+                        sql_value = f"'{escaped_value}'"
+                    elif isinstance(value, (int, float)):
+                        sql_value = str(value)
+                    else:
+                        sql_value = f"'{str(value)}'"
+
+                    statement = statement.replace(f"{{{placeholder}}}", sql_value)
+
+                # Replace auto_id placeholder
+                if auto_increment and auto_increment.enabled:
+                    statement = statement.replace("{auto_id}", str(auto_id))
+                    auto_id += 1
+
+                # Replace timestamp placeholder
+                statement = statement.replace(
+                    "{current_timestamp}", "CURRENT_TIMESTAMP"
+                )
+
+                statements.append(statement)
+
+            logger.info(f"Generated {len(statements)} custom SQL statements")
+            return statements
+
+        except Exception as e:
+            logger.error(f"Error generating custom SQL: {str(e)}")
+            raise SQLGenerationError(f"Failed to generate custom SQL: {str(e)}")

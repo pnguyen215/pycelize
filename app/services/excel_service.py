@@ -370,3 +370,60 @@ class ExcelService:
 
             adjusted_width = min(max_length + 2, self.max_column_width)
             worksheet.column_dimensions[column_letter].width = adjusted_width
+
+    def extract_columns_to_file(
+        self,
+        data: pd.DataFrame,
+        columns: List[str],
+        output_path: str,
+        remove_duplicates: bool = False,
+    ) -> str:
+        """
+        Extract specific columns from DataFrame and save to Excel file.
+
+        Args:
+            data: Source DataFrame
+            columns: List of column names to extract
+            output_path: Path for the output Excel file
+            remove_duplicates: Whether to remove duplicate rows in extracted data
+
+        Returns:
+            Path to the created file
+
+        Raises:
+            ValidationError: If column doesn't exist
+            FileProcessingError: If file cannot be written
+        """
+        logger.info(f"Extracting columns {columns} to file: {output_path}")
+
+        # Validate columns
+        missing_columns = [col for col in columns if col not in data.columns]
+        if missing_columns:
+            raise ValidationError(
+                f"Columns not found in data: {', '.join(missing_columns)}"
+            )
+
+        # Extract columns
+        extracted_df = data[columns].copy()
+
+        # Remove duplicates if requested
+        if remove_duplicates:
+            original_count = len(extracted_df)
+            extracted_df = extracted_df.drop_duplicates()
+            logger.info(
+                f"Removed {original_count - len(extracted_df)} duplicate rows"
+            )
+
+        # Write to Excel
+        self.write_excel(
+            extracted_df,
+            output_path,
+            sheet_name="Extracted Data",
+            include_info=True,
+            auto_adjust=True,
+        )
+
+        logger.info(
+            f"Successfully extracted {len(columns)} columns with {len(extracted_df)} rows"
+        )
+        return output_path

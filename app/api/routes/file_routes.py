@@ -24,6 +24,54 @@ def get_binding_service() -> BindingService:
     return BindingService(config)
 
 
+@file_bp.route("/downloads/<filename>", methods=["GET"])
+def download_file(filename):
+    """
+    Download a file from the output folder.
+    
+    Args:
+        filename: Name of the file to download
+    
+    Returns:
+        File download or error response
+    
+    Example:
+        curl http://localhost:5050/api/v1/files/downloads/extracted_columns_20240129_120000.xlsx \
+             --output result.xlsx
+    """
+    try:
+        config = current_app.config.get("PYCELIZE")
+        output_folder = config.get("file.output_folder", "outputs")
+        
+        # Secure the filename to prevent path traversal
+        safe_filename = secure_filename(filename)
+        file_path = os.path.join(output_folder, safe_filename)
+        
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify(ResponseBuilder.error("File not found", 404)), 404
+        
+        # Determine mimetype based on extension
+        if safe_filename.endswith('.xlsx'):
+            mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        elif safe_filename.endswith('.txt'):
+            mimetype = 'text/plain'
+        elif safe_filename.endswith('.sql'):
+            mimetype = 'text/plain'
+        else:
+            mimetype = 'application/octet-stream'
+        
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=safe_filename,
+            mimetype=mimetype,
+        )
+    
+    except Exception as e:
+        return jsonify(ResponseBuilder.error(str(e), 500)), 500
+
+
 @file_bp.route("/bind", methods=["POST"])
 def bind_excel_files():
     """
