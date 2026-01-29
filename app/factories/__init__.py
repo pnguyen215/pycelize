@@ -6,6 +6,7 @@ service instances and strategy objects.
 """
 
 from app.factories.normalizer_factory import NormalizerFactory
-from app.factories.service_factory import ServiceFactory
 
-__all__ = ["NormalizerFactory", "ServiceFactory"]
+# from app.factories.service_factory import ServiceFactory
+
+__all__ = ["NormalizerFactory"]
