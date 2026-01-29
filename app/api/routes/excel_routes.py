@@ -5,6 +5,7 @@ This module provides API endpoints for Excel file operations.
 """
 
 import os
+import json
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
@@ -102,8 +103,6 @@ def extract_columns():
         upload_folder = config.get("file.upload_folder", "uploads")
 
         # Parse request parameters
-        import json
-
         columns_str = request.form.get("columns", "[]")
         columns = json.loads(columns_str)
         remove_duplicates = (
@@ -177,8 +176,6 @@ def extract_columns_to_file():
         output_folder = config.get("file.output_folder", "outputs")
 
         # Parse request parameters
-        import json
-
         columns_str = request.form.get("columns", "[]")
         columns = json.loads(columns_str)
         remove_duplicates = (
@@ -260,8 +257,6 @@ def map_columns():
         output_folder = config.get("file.output_folder", "outputs")
 
         # Parse mapping
-        import json
-
         mapping_str = request.form.get("mapping", "{}")
         mapping = json.loads(mapping_str)
 

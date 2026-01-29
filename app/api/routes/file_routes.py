@@ -36,7 +36,7 @@ def download_file(filename):
         File download or error response
     
     Example:
-        curl http://localhost:5050/api/v1/files/downloads/extracted_columns_20240129_120000.xlsx \
+        curl http://localhost:5050/api/v1/files/downloads/extracted_columns_20260129_120000.xlsx \
              --output result.xlsx
     """
     try:
@@ -46,6 +46,13 @@ def download_file(filename):
         # Secure the filename to prevent path traversal
         safe_filename = secure_filename(filename)
         file_path = os.path.join(output_folder, safe_filename)
+        
+        # Validate that the resolved path is within the output folder
+        abs_output_folder = os.path.abspath(output_folder)
+        abs_file_path = os.path.abspath(file_path)
+        
+        if not abs_file_path.startswith(abs_output_folder + os.sep):
+            return jsonify(ResponseBuilder.error("Invalid file path", 400)), 400
         
         # Check if file exists
         if not os.path.exists(file_path):

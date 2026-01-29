@@ -185,6 +185,13 @@ class SQLGenerationService:
         logger.info(f"Generating custom SQL with template for {len(data)} rows")
 
         try:
+            # Validate all columns exist before processing rows
+            for placeholder, column in column_mapping.items():
+                if column not in data.columns:
+                    raise SQLGenerationError(
+                        f"Column '{column}' not found in data"
+                    )
+
             statements = []
             auto_id = (
                 auto_increment.start_value
@@ -197,11 +204,6 @@ class SQLGenerationService:
 
                 # Replace column placeholders
                 for placeholder, column in column_mapping.items():
-                    if column not in data.columns:
-                        raise SQLGenerationError(
-                            f"Column '{column}' not found in data"
-                        )
-
                     value = row[column]
 
                     # Handle NULL values
@@ -233,6 +235,8 @@ class SQLGenerationService:
             logger.info(f"Generated {len(statements)} custom SQL statements")
             return statements
 
+        except SQLGenerationError:
+            raise
         except Exception as e:
             logger.error(f"Error generating custom SQL: {str(e)}")
             raise SQLGenerationError(f"Failed to generate custom SQL: {str(e)}")

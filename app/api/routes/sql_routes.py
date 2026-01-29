@@ -5,13 +5,15 @@ This module provides API endpoints for SQL generation operations.
 """
 
 import os
+import json
+from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
 
 from app.builders.response_builder import ResponseBuilder
 from app.services.excel_service import ExcelService
 from app.services.sql_generation_service import SQLGenerationService
-from app.models.request import SQLGenerationRequest
+from app.models.request import SQLGenerationRequest, AutoIncrementConfig
 from app.utils.file_utils import FileUtils
 from app.utils.validators import Validators
 from app.utils.helpers import generate_output_filename
@@ -97,8 +99,6 @@ def generate_sql():
         output_folder = config.get("file.output_folder", "outputs")
 
         # Parse request parameters
-        import json
-
         table_name = request.form.get("table_name")
         if not table_name:
             raise ValidationError("table_name is required")
@@ -223,9 +223,6 @@ def generate_sql_to_text():
         output_folder = config.get("file.output_folder", "outputs")
 
         # Parse request parameters
-        import json
-        from datetime import datetime
-
         columns_str = request.form.get("columns", "[]")
         columns = json.loads(columns_str)
         
@@ -359,9 +356,6 @@ def generate_custom_sql_to_text():
         output_folder = config.get("file.output_folder", "outputs")
 
         # Parse request parameters
-        import json
-        from datetime import datetime
-
         columns_str = request.form.get("columns", "[]")
         columns = json.loads(columns_str)
         
@@ -408,8 +402,6 @@ def generate_custom_sql_to_text():
                 df = df.drop_duplicates()
 
             # Generate custom SQL
-            from app.models.request import AutoIncrementConfig
-            
             auto_config = AutoIncrementConfig.from_dict(auto_increment_data)
             statements = sql_service.generate_custom_sql(
                 df, template, column_mapping, auto_config
