@@ -215,6 +215,8 @@ All API responses follow this structure:
 | POST | `/excel/extract-columns` | Extract column data (returns JSON) |
 | POST | `/excel/extract-columns-to-file` | Extract columns and save to Excel file |
 | POST | `/excel/map-columns` | Apply column mapping |
+| POST | `/excel/bind-single-key` | Bind columns using single comparison column |
+| POST | `/excel/bind-multi-key` | Bind columns using multiple comparison columns |
 
 #### CSV Operations
 | Method | Endpoint | Description |
@@ -520,6 +522,177 @@ curl http://localhost:5050/api/v1/files/downloads/extracted_columns_20260129_120
 curl http://localhost:5050/api/v1/files/downloads/sql_statements_20260129_120000.txt \
   --output inserts.sql
 ```
+
+## 📊 Excel Binding APIs
+
+### Overview
+The Excel Binding APIs provide advanced column binding capabilities that allow you to merge data from two Excel files based on matching column values. This is useful for enriching data with reference information, adding lookup values, or combining related datasets.
+
+### Use Cases
+- **Data Enrichment**: Add customer details (email, phone) to transaction records by matching customer IDs
+- **Reference Lookups**: Append product information to order data using product codes
+- **Data Integration**: Merge employee data from multiple sources using composite keys (first name + last name)
+
+### 16. Bind Excel Files - Single Key
+
+Bind columns from a bind file to a source file using a single comparison column. This performs a left join operation, preserving all rows from the source file.
+
+**Description:** 
+- Takes two Excel files: source file (File A) and bind file (File B)
+- Matches rows based on a single comparison column
+- Appends specified columns from File B to File A
+- Preserves all original columns and data in File A
+- Returns NaN for rows without matches
+
+**Request Parameters:**
+- `source_file`: Excel file to be extended with new columns (File A)
+- `bind_file`: Excel file containing data to bind (File B)
+- `comparison_column`: Column name used to match rows between files
+- `bind_columns`: JSON array of column names to append from File B
+- `output_filename`: Optional custom output filename
+
+**Response Example:**
+```json
+{
+  "data": {
+    "download_url": "http://localhost:5050/api/v1/files/downloads/source_data_bound_single_20260129_143022.xlsx"
+  },
+  "message": "Excel binding completed successfully",
+  "meta": {
+    "api_version": "v0.0.1",
+    "locale": "en_US",
+    "request_id": "abc123...",
+    "requested_time": "2026-01-29T14:30:22+00:00"
+  },
+  "status_code": 200,
+  "total": 0
+}
+```
+
+**cURL Example:**
+```bash
+curl -X POST \
+  -F "source_file=@source.xlsx" \
+  -F "bind_file=@bind.xlsx" \
+  -F "comparison_column=s_1_name" \
+  -F 'bind_columns=["s_1_id"]' \
+  http://localhost:5050/api/v1/excel/bind-single-key
+```
+
+**Example Scenario:**
+
+**File A (source.xlsx) - Before:**
+| s_1_name | existing_col |
+|----------|--------------|
+| Alice    | data1        |
+| Bob      | data2        |
+| Charlie  | data3        |
+
+**File B (bind.xlsx):**
+| s_1_name | s_1_id |
+|----------|--------|
+| Alice    | 101    |
+| Bob      | 102    |
+| David    | 103    |
+
+**Result (source_data_bound_single.xlsx) - After:**
+| s_1_name | existing_col | s_1_id |
+|----------|--------------|--------|
+| Alice    | data1        | 101    |
+| Bob      | data2        | 102    |
+| Charlie  | data3        | NaN    |
+
+**Note:** Charlie's row remains but has NaN for s_1_id since there's no match in File B.
+
+### 17. Bind Excel Files - Multi Key (Composite Key)
+
+Bind columns from a bind file to a source file using multiple comparison columns for matching. This is useful when a single column isn't unique enough for matching.
+
+**Description:**
+- Similar to single-key binding but uses multiple columns together as a composite key
+- Matches rows only when ALL comparison columns match
+- Useful for matching on combinations like (first_name + last_name) or (country + city)
+- All original data in File A is preserved
+
+**Request Parameters:**
+- `source_file`: Excel file to be extended (File A)
+- `bind_file`: Excel file with data to bind (File B)
+- `comparison_columns`: JSON array of column names used together for matching
+- `bind_columns`: JSON array of column names to append from File B
+- `output_filename`: Optional custom output filename
+
+**Response Example:**
+```json
+{
+  "data": {
+    "download_url": "http://localhost:5050/api/v1/files/downloads/source_data_bound_multi_20260129_143530.xlsx"
+  },
+  "message": "Excel binding completed successfully",
+  "meta": {
+    "api_version": "v0.0.1",
+    "locale": "en_US",
+    "request_id": "xyz789...",
+    "requested_time": "2026-01-29T14:35:30+00:00"
+  },
+  "status_code": 200,
+  "total": 0
+}
+```
+
+**cURL Example:**
+```bash
+curl -X POST \
+  -F "source_file=@source.xlsx" \
+  -F "bind_file=@bind.xlsx" \
+  -F 'comparison_columns=["first_name", "last_name"]' \
+  -F 'bind_columns=["email", "phone"]' \
+  http://localhost:5050/api/v1/excel/bind-multi-key
+```
+
+**Example Scenario:**
+
+**File A (source.xlsx) - Before:**
+| first_name | last_name | department |
+|------------|-----------|------------|
+| John       | Doe       | IT         |
+| Jane       | Smith     | HR         |
+| John       | Smith     | Finance    |
+
+**File B (bind.xlsx):**
+| first_name | last_name | email              | phone        |
+|------------|-----------|--------------------|--------------| 
+| John       | Doe       | john.doe@corp.com  | 555-0101     |
+| Jane       | Smith     | jane.smith@corp.com| 555-0102     |
+| Mike       | Johnson   | mike.j@corp.com    | 555-0103     |
+
+**Result (source_data_bound_multi.xlsx) - After:**
+| first_name | last_name | department | email               | phone    |
+|------------|-----------|------------|---------------------|----------|
+| John       | Doe       | IT         | john.doe@corp.com   | 555-0101 |
+| Jane       | Smith     | HR         | jane.smith@corp.com | 555-0102 |
+| John       | Smith     | Finance    | NaN                 | NaN      |
+
+**Note:** "John Smith" in File A doesn't match any row in File B (only "John Doe" and "Jane Smith" exist), so email and phone are NaN.
+
+### Binding Features & Behavior
+
+**Key Features:**
+- **Preserves Original Data**: All columns and rows from source file are kept
+- **Left Join Logic**: All source rows appear in output, matched or not
+- **Duplicate Handling**: If bind file has duplicate keys, first match is used
+- **NaN for Unmatched**: Rows without matches get NaN in bound columns
+- **Column Conflict Detection**: Raises error if bind columns already exist in source
+- **Type Preservation**: Data types are maintained during binding
+
+**Error Handling:**
+- `422 Validation Error`: Missing columns, column conflicts, invalid JSON
+- `400 File Processing Error`: File read/write failures
+- `500 Server Error`: Unexpected internal errors
+
+**Performance Tips:**
+- Remove duplicates from bind file before uploading for faster processing
+- Use single-key binding when possible (faster than multi-key)
+- Consider file size limits when working with large datasets
 
 ## 🎨 Design Patterns
 
