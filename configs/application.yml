@@ -95,7 +95,7 @@ normalization:
   enabled: true
   
   # Backup original data before normalization
-  backup_original: false
+  backup_original: true
   
   # Generate normalization report
   generate_report: true
