@@ -9,6 +9,7 @@
         "celerybeat",
         "Connor",
         "cpus",
+        "CURDATE",
         "cython",
         "dmypy",
         "filterwarnings",
