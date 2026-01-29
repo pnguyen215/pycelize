@@ -410,15 +410,13 @@ class ExcelService:
         if remove_duplicates:
             original_count = len(extracted_df)
             extracted_df = extracted_df.drop_duplicates()
-            logger.info(
-                f"Removed {original_count - len(extracted_df)} duplicate rows"
-            )
+            logger.info(f"Removed {original_count - len(extracted_df)} duplicate rows")
 
         # Write to Excel
         self.write_excel(
             extracted_df,
             output_path,
-            sheet_name="Extracted Data",
+            sheet_name="Sheet1",
             include_info=True,
             auto_adjust=True,
         )
