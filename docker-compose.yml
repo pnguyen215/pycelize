@@ -1,0 +1,61 @@
+# =============================================================================
+# Pycelize Docker Compose Configuration
+# =============================================================================
+# Usage:
+#   docker-compose up -d        # Start in detached mode
+#   docker-compose down         # Stop containers
+#   docker-compose logs -f      # View logs
+# =============================================================================
+
+version: '3.8'
+
+services:
+  pycelize:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: pycelize:latest
+    container_name: pycelize-app
+    ports:
+      - "${PORT:-5000}:5000"
+    volumes:
+      # Mount data directories
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      # Mount config (read-only)
+      - ./configs:/app/configs
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-0}
+      - TZ=UTC
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - pycelize-network
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+# Optional: Custom network
+networks:
+  pycelize-network:
+    driver: bridge
+
+# Optional: Named volumes for persistence
+volumes:
+  pycelize-uploads:
+  pycelize-outputs:
+  pycelize-logs:
