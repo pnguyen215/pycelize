@@ -87,6 +87,16 @@ help:
 	@echo "$(GREEN)Docker:$(NC)"
 	@echo "  make docker-build - Build Docker image"
 	@echo "  make docker-run   - Run Docker container"
+	@echo "  make docker-stop  - Stop Docker container"
+	@echo "  make docker-logs  - View Docker container logs"
+	@echo "  make docker-shell - Access shell in Docker container"
+	@echo "  make docker-restart - Restart Docker container"
+	@echo "  make docker-compose-up   - Start services with Docker Compose"
+	@echo "  make docker-compose-down - Stop services with Docker Compose"
+	@echo "  make docker-compose-logs - View logs from Docker Compose"
+	@echo "  make docker-compose-rebuild - Rebuild and start Docker Compose services"
+	@echo "  make docker-clean  - Clean Docker resources"
+	@echo "  make docker-prune  - Prune unused Docker resources"
 	@echo ""
 
 # =============================================================================
@@ -189,29 +199,6 @@ clean-all: clean
 # =============================================================================
 # Docker
 # =============================================================================
-
-# docker-build:
-# 	@echo "$(CYAN)Building Docker image...$(NC)"
-# 	docker build -t pycelize:latest .
-# 	@echo "$(GREEN)✓ Docker image built$(NC)"
-
-# docker-run:
-# 	@echo "$(CYAN)Running Docker container...$(NC)"
-# 	docker run -p $(PORT):$(PORT) \
-# 		-v $(PWD)/uploads:/app/uploads \
-# 		-v $(PWD)/outputs:/app/outputs \
-# 		-v $(PWD)/logs:/app/logs \
-# 		pycelize:latest
-
-# docker-compose-up:
-# 	@echo "$(CYAN)Starting with Docker Compose...$(NC)"
-# 	docker-compose up -d
-# 	@echo "$(GREEN)✓ Containers started$(NC)"
-
-# docker-compose-down:
-# 	@echo "$(CYAN)Stopping Docker Compose...$(NC)"
-# 	docker-compose down
-# 	@echo "$(GREEN)✓ Containers stopped$(NC)"
 
 docker-build:
 	@echo "$(CYAN)Building Docker image...$(NC)"
