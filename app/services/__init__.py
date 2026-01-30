@@ -9,6 +9,7 @@ from app.services.csv_service import CSVService
 from app.services.normalization_service import NormalizationService
 from app.services.sql_generation_service import SQLGenerationService
 from app.services.binding_service import BindingService
+from app.services.json_generation_service import JSONGenerationService
 
 __all__ = [
     "ExcelService",
@@ -16,4 +17,5 @@ __all__ = [
     "NormalizationService",
     "SQLGenerationService",
     "BindingService",
+    "JSONGenerationService",
 ]

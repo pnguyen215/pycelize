@@ -96,6 +96,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.routes.normalization_routes import normalization_bp
     from app.api.routes.sql_routes import sql_bp
     from app.api.routes.file_routes import file_bp
+    from app.api.routes.json_routes import json_bp
 
     # Get API prefix from config
     config = app.config.get("PYCELIZE")
@@ -108,3 +109,4 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(normalization_bp, url_prefix=f"{api_prefix}/normalization")
     app.register_blueprint(sql_bp, url_prefix=f"{api_prefix}/sql")
     app.register_blueprint(file_bp, url_prefix=f"{api_prefix}/files")
+    app.register_blueprint(json_bp, url_prefix=f"{api_prefix}/json")
