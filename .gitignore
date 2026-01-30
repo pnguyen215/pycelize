@@ -167,4 +167,5 @@ requirements_draft.txt
 .DS_Store
 uploads/
 outputs/
-logs/*.logtest_data/
+logs/*.log
+test_data/

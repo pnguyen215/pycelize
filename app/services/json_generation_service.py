@@ -75,6 +75,7 @@ class JSONGenerationService:
             pretty_print: Whether to format JSON with indentation (default: True)
             null_handling: How to handle null values - "include", "exclude", "default" (default: "include")
             array_wrapper: Whether to wrap objects in array (default: True)
+                          Note: If False and data has multiple rows, returns array anyway
             
         Returns:
             Dictionary containing:
@@ -184,6 +185,7 @@ class JSONGenerationService:
             output_path: Path for output JSON file
             pretty_print: Format JSON with indentation
             aggregation_mode: "array", "single", "nested" (default: "array")
+                             Note: "single" with multiple rows returns array
             
         Returns:
             Dictionary containing:

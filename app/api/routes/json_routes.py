@@ -126,8 +126,7 @@ def generate_json():
             )
             
             # Build download URL
-            host = request.host
-            download_url = f"http://{host}/api/v1/files/downloads/{output_file}"
+            download_url = f"{request.scheme}://{request.host}/api/v1/files/downloads/{output_file}"
             
             response_data = {
                 "download_url": download_url,
@@ -264,8 +263,7 @@ def generate_json_with_template():
             )
             
             # Build download URL
-            host = request.host
-            download_url = f"http://{host}/api/v1/files/downloads/{output_file}"
+            download_url = f"{request.scheme}://{request.host}/api/v1/files/downloads/{output_file}"
             
             response_data = {
                 "download_url": download_url,
