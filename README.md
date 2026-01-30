@@ -30,6 +30,7 @@ Pycelize is a production-ready Flask application designed for processing Excel a
 - **Data Normalization**: Apply various normalization strategies (uppercase, trim, phone format, etc.)
 - **Column Mapping**: Map and transform column names
 - **SQL Generation**: Generate SQL statements with auto-increment support
+- **JSON Generation**: Generate JSON from Excel with column mapping or custom templates
 - **Excel-to-Excel Binding**: Bind values from source to target files
 - **Standardized API Responses**: Consistent response format using Builder pattern
 
@@ -46,6 +47,7 @@ pycelize/
 │   │       ├── csv_routes.py
 │   │       ├── normalization_routes.py
 │   │       ├── sql_routes.py
+│   │       ├── json_routes.py
 │   │       └── file_routes.py
 │   ├── core/
 │   │   ├── config.py            # Configuration management
@@ -60,6 +62,7 @@ pycelize/
 │   │   ├── csv_service.py       # CSV operations
 │   │   ├── normalization_service.py
 │   │   ├── sql_generation_service.py
+│   │   ├── json_generation_service.py
 │   │   └── binding_service.py
 │   ├── builders/
 │   │   ├── response_builder.py  # Builder pattern implementation
@@ -238,6 +241,12 @@ All API responses follow this structure:
 | POST | `/sql/generate-to-text` | Generate SQL from extracted columns to text file |
 | POST | `/sql/generate-custom-to-text` | Generate SQL using custom template to text file |
 
+#### JSON Generation
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/json/generate` | Generate JSON from Excel with column mapping |
+| POST | `/json/generate-with-template` | Generate JSON using custom template |
+
 #### File Operations
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -343,7 +352,82 @@ curl -X POST \
   http://localhost:5050/api/v1/sql/generate
 ```
 
-### 10. Bind Excel Files
+### 10. Generate JSON from Excel (Standard Mapping)
+```bash
+curl -X POST \
+  -F "file=@data.xlsx" \
+  -F 'column_mapping={"Name": "full_name", "Email": "email", "Age": "age"}' \
+  -F "pretty_print=true" \
+  -F "null_handling=exclude" \
+  -F "array_wrapper=true" \
+  http://localhost:5050/api/v1/json/generate
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "download_url": "/api/v1/files/downloads/data_generated_20260130_101437.json",
+    "total_records": 150,
+    "file_size": 45632
+  },
+  "message": "JSON file generated successfully",
+  "status_code": 200
+}
+```
+
+**Generated JSON (data_generated_20260130_101437.json):**
+```json
+[
+  {
+    "full_name": "Alice",
+    "email": "alice@example.com",
+    "age": 25
+  },
+  {
+    "full_name": "Bob",
+    "email": "bob@example.com",
+    "age": 30
+  }
+]
+```
+
+### 11. Generate JSON with Custom Template
+```bash
+curl -X POST \
+  -F "file=@users.xlsx" \
+  -F 'template={"user":{"id":"{user_id}","name":"{first_name} {last_name}"},"contact":{"email":"{email}"}}' \
+  -F 'column_mapping={"user_id":"UserID","first_name":"FirstName","last_name":"LastName","email":"Email"}' \
+  -F "aggregation_mode=array" \
+  -F "pretty_print=true" \
+  http://localhost:5050/api/v1/json/generate-with-template
+```
+
+**Generated JSON:**
+```json
+[
+  {
+    "user": {
+      "id": "1",
+      "name": "Alice Smith"
+    },
+    "contact": {
+      "email": "alice@example.com"
+    }
+  },
+  {
+    "user": {
+      "id": "2",
+      "name": "Bob Jones"
+    },
+    "contact": {
+      "email": "bob@example.com"
+    }
+  }
+]
+```
+
+### 12. Bind Excel Files
 ```bash
 curl -X POST \
   -F "source_file=@source_data.xlsx" \
@@ -357,7 +441,7 @@ curl -X POST \
   --output bound_result.xlsx
 ```
 
-### 11. Preview Binding Operation
+### 13. Preview Binding Operation
 ```bash
 curl -X POST \
   -F "source_file=@source.xlsx" \
@@ -366,7 +450,7 @@ curl -X POST \
   http://localhost:5050/api/v1/files/bind/preview
 ```
 
-### 12. Extract Columns to Excel File (New Feature)
+### 14. Extract Columns to Excel File (New Feature)
 Extract specific columns from an Excel file and save the result to a new Excel file. Returns a download URL for the generated file.
 
 **Description:** This endpoint extracts specified columns from an uploaded Excel file and creates a new Excel file containing only those columns. The extracted data can optionally have duplicates removed. The response includes a download URL in the standardized format.
@@ -693,6 +777,160 @@ curl -X POST \
 - Remove duplicates from bind file before uploading for faster processing
 - Use single-key binding when possible (faster than multi-key)
 - Consider file size limits when working with large datasets
+
+## 📄 JSON Generation Features
+
+The JSON generation feature provides flexible ways to transform Excel data into JSON format with support for standard column mapping and custom template-based generation.
+
+### Standard JSON Generation
+
+Generate JSON from Excel data by mapping Excel columns to JSON keys.
+
+**Parameters:**
+- `file`: Excel file (required)
+- `column_mapping`: JSON object mapping Excel columns to JSON keys (optional, uses all columns if not provided)
+- `columns`: JSON array of column names to extract before generation (optional)
+- `pretty_print`: Boolean to format JSON with indentation (default: true)
+- `null_handling`: Strategy for null values - "include", "exclude", "default" (default: "include")
+- `array_wrapper`: Boolean to wrap objects in array (default: true)
+- `output_filename`: Optional custom filename
+
+**Null Handling Strategies:**
+- `include`: Keep null values as `null` in JSON
+- `exclude`: Remove keys with null values from JSON objects
+- `default`: Replace null values with empty strings
+
+**Example:**
+```bash
+curl -X POST \
+  -F "file=@data.xlsx" \
+  -F 'column_mapping={"Name": "full_name", "Email": "email", "Age": "age"}' \
+  -F "null_handling=exclude" \
+  http://localhost:5050/api/v1/json/generate
+```
+
+### Template-Based JSON Generation
+
+Generate JSON using custom templates with placeholder substitution. This allows for nested structures and complex JSON schemas.
+
+**Parameters:**
+- `file`: Excel file (required)
+- `template`: JSON template string or object with placeholders (required)
+- `column_mapping`: JSON object mapping placeholders to Excel columns (required)
+- `pretty_print`: Boolean to format JSON with indentation (default: true)
+- `aggregation_mode`: Output format - "array", "single", "nested" (default: "array")
+- `output_filename`: Optional custom filename
+
+**Aggregation Modes:**
+- `array`: Returns array of objects (default)
+- `single`: Returns single object (for one row) or array (for multiple rows)
+- `nested`: Returns object with `items` array and `count` field
+
+**Placeholder Syntax:**
+- `{column_name}`: Basic substitution
+- `{column_name:int}`: Convert to integer
+- `{column_name:float}`: Convert to float
+- `{column_name:bool}`: Convert to boolean
+- `{column_name:datetime}`: Keep as datetime string
+- `{column_name|default}`: Use default if value is null
+
+**Template Examples:**
+
+1. **Simple Template:**
+```json
+{
+  "id": "{user_id}",
+  "name": "{full_name}",
+  "email": "{email_address}"
+}
+```
+
+2. **Nested Structure:**
+```json
+{
+  "user": {
+    "personal": {
+      "firstName": "{first_name}",
+      "lastName": "{last_name}"
+    },
+    "contact": {
+      "email": "{email}",
+      "phone": "{phone}"
+    }
+  },
+  "metadata": {
+    "source": "excel_import"
+  }
+}
+```
+
+3. **With Type Conversion:**
+```json
+{
+  "id": "{user_id:int}",
+  "score": "{score:float}",
+  "active": "{is_active:bool}"
+}
+```
+
+4. **With Default Values:**
+```json
+{
+  "name": "{name}",
+  "email": "{email|no-email@example.com}",
+  "status": "{status|pending}"
+}
+```
+
+**Example Usage:**
+```bash
+curl -X POST \
+  -F "file=@users.xlsx" \
+  -F 'template={"user":{"id":"{user_id}","name":"{first} {last}"},"contact":{"email":"{email}"}}' \
+  -F 'column_mapping={"user_id":"UserID","first":"FirstName","last":"LastName","email":"Email"}' \
+  -F "aggregation_mode=nested" \
+  http://localhost:5050/api/v1/json/generate-with-template
+```
+
+### Edge Cases Handled
+
+- **Empty DataFrame**: Returns empty array `[]`
+- **Missing Columns**: Returns 422 validation error with details
+- **Invalid Template**: Returns 422 validation error
+- **Null/NaN Values**: Handled according to strategy
+- **Special Characters**: Properly escaped in JSON
+- **Mixed Data Types**: Automatic type conversion
+
+### Response Format
+
+Both endpoints return the same response structure:
+
+```json
+{
+  "data": {
+    "download_url": "/api/v1/files/downloads/data_generated_20260130_101437.json",
+    "total_records": 150,
+    "file_size": 45632
+  },
+  "message": "JSON file generated successfully",
+  "meta": {
+    "api_version": "v0.0.1",
+    "locale": "en_US",
+    "request_id": "abc123...",
+    "requested_time": "2026-01-30T10:14:37.232310+00:00"
+  },
+  "status_code": 200,
+  "total": 0
+}
+```
+
+### File Naming Convention
+
+Generated files follow the pattern:
+- Standard generation: `{original_name}_generated_{timestamp}.json`
+- Template generation: `{original_name}_generated_template_{timestamp}.json`
+
+Example: `data_generated_20260130_143022.json`
 
 ## 🎨 Design Patterns
 
