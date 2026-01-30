@@ -5,7 +5,7 @@ This module provides API endpoints for data normalization operations.
 """
 
 import os
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 
 from app.builders.response_builder import ResponseBuilder
@@ -82,6 +82,7 @@ def apply_normalization():
              --output normalized.xlsx
     """
     try:
+        logger = current_app.logger
         Validators.validate_file_uploaded(request.files.get("file"))
 
         file = request.files["file"]
@@ -131,6 +132,8 @@ def apply_normalization():
                     generate_output_filename(file.filename, "normalized", ".xlsx"),
                 )
 
+            logger.info(f"Writing normalized file to {output_path}")
+
             # Write result
             excel_service.write_excel(normalized_df, output_path)
 
@@ -144,11 +147,15 @@ def apply_normalization():
                 )
                 return jsonify(response), 200
             else:
-                return send_file(
-                    output_path,
-                    as_attachment=True,
-                    download_name=os.path.basename(output_path),
+                # Build download URL
+                host = request.host
+                filename = os.path.basename(output_path)
+                download_url = f"http://{host}/api/v1/files/downloads/{filename}"
+                response = ResponseBuilder.success(
+                    data={"download_url": download_url},
+                    message="Extracted Excel file generated successfully",
                 )
+                return jsonify(response), 200
 
         finally:
             FileUtils.delete_file(file_path)
