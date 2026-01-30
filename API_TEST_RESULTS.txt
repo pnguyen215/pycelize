@@ -1,0 +1,94 @@
+===========================================
+JSON Generation API - Test Results
+===========================================
+
+1. HEALTH CHECK
+================
+$ curl http://localhost:5050/api/v1/health
+{
+  "data": {
+    "service": "Pycelize",
+    "status": "healthy",
+    "version": "v0.0.1"
+  },
+  "message": "Service is healthy",
+  "status_code": 200
+}
+
+2. STANDARD JSON GENERATION
+============================
+$ curl -X POST \
+  -F "file=@test_data/final_test.xlsx" \
+  -F 'column_mapping={"Name": "name", "Email": "email"}' \
+  http://localhost:5050/api/v1/json/generate
+
+Response:
+{
+  "data": {
+    "download_url": "http://localhost:5050/api/v1/files/downloads/final_test_generated_20260130_102050.json",
+    "file_size": 124,
+    "total_records": 2
+  },
+  "message": "JSON file generated successfully",
+  "status_code": 200
+}
+
+Generated File (final_test_generated_20260130_102050.json):
+[
+  {
+    "name": "Alice",
+    "email": "alice@example.com"
+  },
+  {
+    "name": "Bob",
+    "email": "bob@example.com"
+  }
+]
+
+3. TEMPLATE-BASED JSON GENERATION
+===================================
+$ curl -X POST \
+  -F "file=@test_data/final_test.xlsx" \
+  -F 'template={"person":{"name":"{name}","contact":"{email}"}}' \
+  -F 'column_mapping={"name":"Name","email":"Email"}' \
+  http://localhost:5050/api/v1/json/generate-with-template
+
+Response:
+{
+  "data": {
+    "download_url": "http://localhost:5050/api/v1/files/downloads/final_test_generated_template_20260130_102102.json",
+    "file_size": 180,
+    "total_records": 2
+  },
+  "message": "JSON file generated successfully with template",
+  "status_code": 200
+}
+
+Generated File (final_test_generated_template_20260130_102102.json):
+[
+  {
+    "person": {
+      "name": "Alice",
+      "contact": "alice@example.com"
+    }
+  },
+  {
+    "person": {
+      "name": "Bob",
+      "contact": "bob@example.com"
+    }
+  }
+]
+
+4. TEST RESULTS SUMMARY
+========================
+✅ Health check endpoint working
+✅ Standard JSON generation working
+✅ Template-based JSON generation working
+✅ Files generated correctly
+✅ Download URLs functional
+✅ Response format consistent
+✅ Nested structures supported
+✅ Placeholder substitution working
+
+All endpoints are operational and producing correct results!
