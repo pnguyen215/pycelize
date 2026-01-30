@@ -14,7 +14,11 @@
 # =============================================================================
 
 .PHONY: help setup install run test lint clean format dev prod test-cov \
-        setup-dirs clean-all docker-build docker-run freeze
+        setup-dirs clean-all docker-build docker-run freeze \
+		docker-stop docker-logs docker-shell docker-restart \
+		docker-compose-up docker-compose-down docker-compose-logs \
+		docker-compose-rebuild docker-clean docker-prune \
+		start fresh check install-dev
 
 # =============================================================================
 # Configuration
