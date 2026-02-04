@@ -7,13 +7,12 @@ This module provides API endpoints for Excel file operations.
 import os
 import json
 from datetime import datetime
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 
 from app.builders.response_builder import ResponseBuilder
 from app.services.excel_service import ExcelService
 from app.services.binding_service import BindingService
-from app.models.request import ColumnExtractionRequest, ColumnMappingRequest
 from app.utils.file_utils import FileUtils
 from app.utils.validators import Validators
 from app.utils.helpers import generate_output_filename
@@ -299,11 +298,6 @@ def map_columns():
             # Write result
             service.write_excel(mapped_df, output_path)
 
-            # return send_file(
-            #     output_path,
-            #     as_attachment=True,
-            #     download_name=os.path.basename(output_path),
-            # )
             # Build download URL
             host = request.host
             filename = os.path.basename(output_path)

@@ -5,7 +5,7 @@ This module provides API endpoints for CSV file operations.
 """
 
 import os
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 
 from app.builders.response_builder import ResponseBuilder
@@ -124,11 +124,6 @@ def convert_csv_to_excel():
                 csv_path=file_path, output_path=output_path, sheet_name=sheet_name
             )
 
-            # return send_file(
-            #     result_path,
-            #     as_attachment=True,
-            #     download_name=os.path.basename(result_path),
-            # )
             # Build download URL
             host = request.host
             filename = os.path.basename(output_path)

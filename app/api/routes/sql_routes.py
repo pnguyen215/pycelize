@@ -7,8 +7,7 @@ This module provides API endpoints for SQL generation operations.
 import os
 import json
 from datetime import datetime
-from flask import Blueprint, request, jsonify, current_app, send_file
-from werkzeug.utils import secure_filename
+from flask import Blueprint, request, jsonify, current_app
 
 from app.builders.response_builder import ResponseBuilder
 from app.services.excel_service import ExcelService
@@ -160,12 +159,6 @@ def generate_sql():
                 )
                 sql_service.export_sql(result["statements"], output_path)
 
-                # return send_file(
-                #     output_path,
-                #     as_attachment=True,
-                #     download_name=os.path.basename(output_path),
-                #     mimetype="text/plain",
-                # )
                 # Build download URL
                 host = request.host
                 filename = os.path.basename(output_path)

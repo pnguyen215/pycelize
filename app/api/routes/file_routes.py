@@ -168,11 +168,7 @@ def bind_excel_files():
                 output_path=output_path,
             )
 
-            # return send_file(
-            #     result["output_path"],
-            #     as_attachment=True,
-            #     download_name=os.path.basename(result["output_path"]),
-            # )
+            # Build download URL
             host = request.host
             filename = os.path.basename(result["output_path"])
             download_url = f"http://{host}/api/v1/files/downloads/{filename}"
