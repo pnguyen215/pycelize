@@ -299,11 +299,20 @@ def map_columns():
             # Write result
             service.write_excel(mapped_df, output_path)
 
-            return send_file(
-                output_path,
-                as_attachment=True,
-                download_name=os.path.basename(output_path),
+            # return send_file(
+            #     output_path,
+            #     as_attachment=True,
+            #     download_name=os.path.basename(output_path),
+            # )
+            # Build download URL
+            host = request.host
+            filename = os.path.basename(output_path)
+            download_url = f"http://{host}/api/v1/files/downloads/{filename}"
+            response = ResponseBuilder.success(
+                data={"download_url": download_url},
+                message="Extracted Excel file generated successfully",
             )
+            return jsonify(response), 200
 
         finally:
             FileUtils.delete_file(file_path)
@@ -345,56 +354,58 @@ def bind_single_key():
     """
     source_file_path = None
     bind_file_path = None
-    
+
     try:
         # Validate file uploads
         Validators.validate_file_uploaded(request.files.get("source_file"))
         Validators.validate_file_uploaded(request.files.get("bind_file"))
-        
+
         source_file = request.files["source_file"]
         bind_file = request.files["bind_file"]
-        
+
         # Parse request parameters
         comparison_column = request.form.get("comparison_column")
         bind_columns_str = request.form.get("bind_columns", "[]")
         output_filename = request.form.get("output_filename")
-        
+
         # Validate required parameters
         if not comparison_column:
             raise ValidationError("comparison_column parameter is required")
-        
+
         try:
             bind_columns = json.loads(bind_columns_str)
         except json.JSONDecodeError:
             raise ValidationError("bind_columns must be a valid JSON array")
-        
+
         if not bind_columns or len(bind_columns) == 0:
             raise ValidationError("At least one bind column must be specified")
-        
+
         # Get configuration
         config = current_app.config.get("PYCELIZE")
         upload_folder = config.get("file.upload_folder", "uploads")
         output_folder = config.get("file.output_folder", "outputs")
-        
+
         # Ensure directories exist
         FileUtils.ensure_directory(upload_folder)
         FileUtils.ensure_directory(output_folder)
-        
+
         # Save uploaded files
-        source_file_path = FileUtils.secure_save_path(source_file.filename, upload_folder)
+        source_file_path = FileUtils.secure_save_path(
+            source_file.filename, upload_folder
+        )
         source_file.save(source_file_path)
-        
+
         bind_file_path = FileUtils.secure_save_path(bind_file.filename, upload_folder)
         bind_file.save(bind_file_path)
-        
+
         # Perform binding
         binding_service = get_binding_service()
-        
+
         # Generate output path if custom filename provided
         output_path = None
         if output_filename:
             output_path = os.path.join(output_folder, secure_filename(output_filename))
-        
+
         result = binding_service.bind_excel_single_key(
             source_path=source_file_path,
             bind_path=bind_file_path,
@@ -402,20 +413,20 @@ def bind_single_key():
             bind_columns=bind_columns,
             output_path=output_path,
         )
-        
+
         # Build download URL
         output_filename_only = os.path.basename(result["output_path"])
         host = request.host
         download_url = f"http://{host}/api/v1/files/downloads/{output_filename_only}"
-        
+
         response_data = {"download_url": download_url}
-        
+
         response = ResponseBuilder.success(
             data=response_data,
             message="Excel binding completed successfully",
         )
         return jsonify(response), 200
-        
+
     except ValidationError as e:
         return jsonify(ResponseBuilder.error(e.message, 422)), 422
     except FileProcessingError as e:
@@ -460,62 +471,64 @@ def bind_multi_key():
     """
     source_file_path = None
     bind_file_path = None
-    
+
     try:
         # Validate file uploads
         Validators.validate_file_uploaded(request.files.get("source_file"))
         Validators.validate_file_uploaded(request.files.get("bind_file"))
-        
+
         source_file = request.files["source_file"]
         bind_file = request.files["bind_file"]
-        
+
         # Parse request parameters
         comparison_columns_str = request.form.get("comparison_columns", "[]")
         bind_columns_str = request.form.get("bind_columns", "[]")
         output_filename = request.form.get("output_filename")
-        
+
         # Parse JSON parameters
         try:
             comparison_columns = json.loads(comparison_columns_str)
         except json.JSONDecodeError:
             raise ValidationError("comparison_columns must be a valid JSON array")
-        
+
         try:
             bind_columns = json.loads(bind_columns_str)
         except json.JSONDecodeError:
             raise ValidationError("bind_columns must be a valid JSON array")
-        
+
         # Validate required parameters
         if not comparison_columns or len(comparison_columns) == 0:
             raise ValidationError("At least one comparison column must be specified")
-        
+
         if not bind_columns or len(bind_columns) == 0:
             raise ValidationError("At least one bind column must be specified")
-        
+
         # Get configuration
         config = current_app.config.get("PYCELIZE")
         upload_folder = config.get("file.upload_folder", "uploads")
         output_folder = config.get("file.output_folder", "outputs")
-        
+
         # Ensure directories exist
         FileUtils.ensure_directory(upload_folder)
         FileUtils.ensure_directory(output_folder)
-        
+
         # Save uploaded files
-        source_file_path = FileUtils.secure_save_path(source_file.filename, upload_folder)
+        source_file_path = FileUtils.secure_save_path(
+            source_file.filename, upload_folder
+        )
         source_file.save(source_file_path)
-        
+
         bind_file_path = FileUtils.secure_save_path(bind_file.filename, upload_folder)
         bind_file.save(bind_file_path)
-        
+
         # Perform binding
         binding_service = get_binding_service()
-        
+
         # Generate output path if custom filename provided
         output_path = None
         if output_filename:
             output_path = os.path.join(output_folder, secure_filename(output_filename))
-        
+
         result = binding_service.bind_excel_multi_key(
             source_path=source_file_path,
             bind_path=bind_file_path,
@@ -523,20 +536,20 @@ def bind_multi_key():
             bind_columns=bind_columns,
             output_path=output_path,
         )
-        
+
         # Build download URL
         output_filename_only = os.path.basename(result["output_path"])
         host = request.host
         download_url = f"http://{host}/api/v1/files/downloads/{output_filename_only}"
-        
+
         response_data = {"download_url": download_url}
-        
+
         response = ResponseBuilder.success(
             data=response_data,
             message="Excel binding completed successfully",
         )
         return jsonify(response), 200
-        
+
     except ValidationError as e:
         return jsonify(ResponseBuilder.error(e.message, 422)), 422
     except FileProcessingError as e:
