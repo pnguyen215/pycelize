@@ -168,11 +168,19 @@ def bind_excel_files():
                 output_path=output_path,
             )
 
-            return send_file(
-                result["output_path"],
-                as_attachment=True,
-                download_name=os.path.basename(result["output_path"]),
+            # return send_file(
+            #     result["output_path"],
+            #     as_attachment=True,
+            #     download_name=os.path.basename(result["output_path"]),
+            # )
+            host = request.host
+            filename = os.path.basename(result["output_path"])
+            download_url = f"http://{host}/api/v1/files/downloads/{filename}"
+            response = ResponseBuilder.success(
+                data={"download_url": download_url},
+                message="Converted to Excel file successfully",
             )
+            return jsonify(response), 200
 
         finally:
             FileUtils.delete_file(source_path)
