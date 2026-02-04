@@ -160,12 +160,21 @@ def generate_sql():
                 )
                 sql_service.export_sql(result["statements"], output_path)
 
-                return send_file(
-                    output_path,
-                    as_attachment=True,
-                    download_name=os.path.basename(output_path),
-                    mimetype="text/plain",
+                # return send_file(
+                #     output_path,
+                #     as_attachment=True,
+                #     download_name=os.path.basename(output_path),
+                #     mimetype="text/plain",
+                # )
+                # Build download URL
+                host = request.host
+                filename = os.path.basename(output_path)
+                download_url = f"http://{host}/api/v1/files/downloads/{filename}"
+                response = ResponseBuilder.success(
+                    data={"download_url": download_url},
+                    message="Generate Standard SQL file successfully",
                 )
+                return jsonify(response), 200
             else:
                 response = ResponseBuilder.success(
                     data=result,
@@ -225,7 +234,7 @@ def generate_sql_to_text():
         # Parse request parameters
         columns_str = request.form.get("columns", "[]")
         columns = json.loads(columns_str)
-        
+
         table_name = request.form.get("table_name")
         if not table_name:
             raise ValidationError("table_name is required")
@@ -358,7 +367,7 @@ def generate_custom_sql_to_text():
         # Parse request parameters
         columns_str = request.form.get("columns", "[]")
         columns = json.loads(columns_str)
-        
+
         template = request.form.get("template")
         if not template:
             raise ValidationError("template is required")
