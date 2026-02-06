@@ -601,10 +601,12 @@ def download_workflow_file(chat_id: str, filename: str):
         chat_config = config.get_section("chat_workflows")
         storage_path = chat_config.get("storage", {}).get("workflows_path", "./automation/workflows")
         db_path = chat_config.get("storage", {}).get("sqlite_path", "./automation/sqlite/chat.db")
+        partition_strategy = chat_config.get("partition", {}).get("strategy", "time-based")
         
         # Initialize components
         database = ChatDatabase(db_path)
-        repository = ConversationRepository(database)
+        storage = ConversationStorage(storage_path, partition_strategy)
+        repository = ConversationRepository(database, storage)
         
         # Get conversation to find partition key
         conversation = repository.get_conversation(chat_id)
