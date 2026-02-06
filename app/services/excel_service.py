@@ -78,9 +78,9 @@ class ExcelService:
             logger.info(f"Reading Excel file: {file_path}")
 
             if sheet_name:
-                df = pd.read_excel(file_path, sheet_name=sheet_name)
+                df = pd.read_excel(file_path, sheet_name=sheet_name, dtype=str, keep_default_na=False)
             else:
-                df = pd.read_excel(file_path)
+                df = pd.read_excel(file_path, dtype=str, keep_default_na=False)
 
             logger.info(f"Successfully read {len(df)} rows, {len(df.columns)} columns")
             return df

@@ -108,3 +108,31 @@ excel:
         # Read back and verify
         read_df = pd.read_csv(result_path)
         assert len(read_df) == 3
+
+    def test_read_csv_preserves_leading_zeros(self, service, tmp_path):
+        """Test that reading CSV preserves leading zeros."""
+        csv_path = tmp_path / "test_leading_zeros.csv"
+        
+        # Create CSV with leading zeros
+        csv_content = """zip_code,phone,product_code,customer_id
+021201,0123456789,000456,00001234
+00123,555-1234,ABC123,00005678
+12345,999-8888,789,12345678"""
+        
+        with open(csv_path, 'w') as f:
+            f.write(csv_content)
+        
+        df = service.read_csv(str(csv_path))
+        
+        # Verify leading zeros are preserved
+        assert df['zip_code'].iloc[0] == '021201'
+        assert df['zip_code'].iloc[1] == '00123'
+        assert df['phone'].iloc[0] == '0123456789'
+        assert df['product_code'].iloc[0] == '000456'
+        assert df['customer_id'].iloc[0] == '00001234'
+        
+        # Verify all data is string type (either 'object' or 'str')
+        assert df['zip_code'].dtype in ['object', 'str', pd.StringDtype()]
+        assert df['phone'].dtype in ['object', 'str', pd.StringDtype()]
+        assert df['product_code'].dtype in ['object', 'str', pd.StringDtype()]
+        assert df['customer_id'].dtype in ['object', 'str', pd.StringDtype()]

@@ -75,7 +75,7 @@ class CSVService:
         for enc in encodings_to_try:
             try:
                 logger.debug(f"Trying encoding: {enc}")
-                df = pd.read_csv(file_path, encoding=enc)
+                df = pd.read_csv(file_path, encoding=enc, dtype=str, keep_default_na=False)
                 logger.info(f"Successfully read CSV with encoding: {enc}")
                 logger.info(f"Read {len(df)} rows, {len(df.columns)} columns")
                 return df
