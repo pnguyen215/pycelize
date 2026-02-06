@@ -198,3 +198,59 @@ class BindingRequest:
             source_column_mapping=data.get("source_column_mapping", {}),
             output_filename=data.get("output_filename"),
         )
+
+
+@dataclass
+class SearchCondition:
+    """
+    Single search condition for filtering data.
+
+    Attributes:
+        column: Column name to filter on
+        operator: Comparison operator to use
+        value: Value to compare against
+    """
+
+    column: str
+    operator: str
+    value: Any
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SearchCondition":
+        """Create condition from dictionary."""
+        return cls(
+            column=data.get("column", ""),
+            operator=data.get("operator", ""),
+            value=data.get("value"),
+        )
+
+
+@dataclass
+class SearchRequest:
+    """
+    Request model for search/filter operations.
+
+    Attributes:
+        conditions: List of search conditions to apply
+        logic: Logical operator between conditions (AND or OR)
+        output_format: Output format (xlsx, csv, or json)
+        output_filename: Optional custom output filename
+    """
+
+    conditions: List[SearchCondition]
+    logic: str = "AND"
+    output_format: str = "xlsx"
+    output_filename: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SearchRequest":
+        """Create request from dictionary."""
+        conditions = [
+            SearchCondition.from_dict(c) for c in data.get("conditions", [])
+        ]
+        return cls(
+            conditions=conditions,
+            logic=data.get("logic", "AND").upper(),
+            output_format=data.get("output_format", "xlsx").lower(),
+            output_filename=data.get("output_filename"),
+        )
