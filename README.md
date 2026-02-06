@@ -32,6 +32,8 @@ Pycelize is a production-ready Flask application designed for processing Excel a
 - **SQL Generation**: Generate SQL statements with auto-increment support
 - **JSON Generation**: Generate JSON from Excel with column mapping or custom templates
 - **Excel-to-Excel Binding**: Bind values from source to target files
+- **Search and Filter**: Advanced data filtering with multiple conditions and operators
+- **Operator Suggestions**: Automatic suggestions of valid search operators based on column types
 - **Standardized API Responses**: Consistent response format using Builder pattern
 
 ## 📁 Project Structure
@@ -60,6 +62,7 @@ pycelize/
 │   ├── services/
 │   │   ├── excel_service.py     # Excel operations
 │   │   ├── csv_service.py       # CSV operations
+│   │   ├── search_service.py    # Search and filter operations
 │   │   ├── normalization_service.py
 │   │   ├── sql_generation_service.py
 │   │   ├── json_generation_service.py
@@ -220,12 +223,16 @@ All API responses follow this structure:
 | POST | `/excel/map-columns` | Apply column mapping |
 | POST | `/excel/bind-single-key` | Bind columns using single comparison column |
 | POST | `/excel/bind-multi-key` | Bind columns using multiple comparison columns |
+| POST | `/excel/search` | Search and filter Excel data with conditions |
+| POST | `/excel/search/suggest-operators` | Get suggested search operators for each column |
 
 #### CSV Operations
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/csv/info` | Get CSV file information |
 | POST | `/csv/convert-to-excel` | Convert CSV to Excel |
+| POST | `/csv/search` | Search and filter CSV data with conditions |
+| POST | `/csv/search/suggest-operators` | Get suggested search operators for each column |
 
 #### Normalization
 | Method | Endpoint | Description |
@@ -605,6 +612,291 @@ curl http://localhost:5050/api/v1/files/downloads/extracted_columns_20260129_120
 # Download SQL text file
 curl http://localhost:5050/api/v1/files/downloads/sql_statements_20260129_120000.txt \
   --output inserts.sql
+```
+
+## 🔍 Search and Filter APIs
+
+The Search and Filter APIs provide powerful data filtering capabilities for Excel and CSV files. You can apply multiple search conditions across different columns with various operators, and export the filtered results in different formats.
+
+### API 1: Search and Filter Data
+
+Search and filter Excel or CSV files based on multiple conditions with support for different operators and logical combinations.
+
+#### Excel Search Endpoint
+
+**Endpoint:** `POST /api/v1/excel/search`
+
+**Description:** Filter Excel file data using multiple conditions across columns. Supports various operators (equals, contains, greater_than, etc.) and logical combinations (AND/OR). Results can be exported as Excel, CSV, or JSON.
+
+**Request Parameters:**
+- `file`: Excel file (required)
+- `conditions`: JSON array of search conditions (required)
+  - Each condition contains: `column`, `operator`, `value`
+- `logic`: Logical operator between conditions - "AND" or "OR" (default: "AND")
+- `output_format`: Output file format - "xlsx", "csv", or "json" (default: "xlsx")
+- `output_filename`: Optional custom output filename
+
+**Supported Operators:**
+
+**String Operators:**
+- `equals` - Exact match
+- `not_equals` - Not equal to
+- `contains` - Contains substring (case-insensitive)
+- `not_contains` - Does not contain substring
+- `starts_with` - Starts with string
+- `ends_with` - Ends with string
+- `is_empty` - Field is empty or null
+- `is_not_empty` - Field is not empty
+
+**Numeric Operators:**
+- `equals` - Equal to number
+- `not_equals` - Not equal to number
+- `greater_than` - Greater than
+- `greater_than_or_equal` - Greater than or equal
+- `less_than` - Less than
+- `less_than_or_equal` - Less than or equal
+- `between` - Between two values (value must be [min, max])
+
+**Date Operators:**
+- `equals` - Exact date match
+- `before` - Before date
+- `after` - After date
+- `between` - Between two dates
+
+**Response Example:**
+```json
+{
+  "data": {
+    "download_url": "http://localhost:5050/api/v1/files/downloads/search_results_20260206_120000.xlsx",
+    "total_rows": 1000,
+    "filtered_rows": 45,
+    "conditions_applied": 2
+  },
+  "message": "Search completed successfully. 45 rows matched.",
+  "meta": {
+    "api_version": "v0.0.1",
+    "locale": "en_US",
+    "request_id": "abc123...",
+    "requested_time": "2026-02-06T12:00:00+00:00"
+  },
+  "status_code": 200,
+  "total": 0
+}
+```
+
+**cURL Examples:**
+
+**Simple equals search:**
+```bash
+curl -X POST \
+  -F "file=@data.xlsx" \
+  -F 'conditions=[{"column": "customer_id", "operator": "equals", "value": "021201"}]' \
+  -F "logic=AND" \
+  -F "output_format=xlsx" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+**Multiple conditions with AND logic:**
+```bash
+curl -X POST \
+  -F "file=@sales_data.xlsx" \
+  -F 'conditions=[
+    {"column": "status", "operator": "equals", "value": "active"},
+    {"column": "amount", "operator": "greater_than", "value": 1000}
+  ]' \
+  -F "logic=AND" \
+  -F "output_format=csv" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+**Search with OR logic:**
+```bash
+curl -X POST \
+  -F "file=@customers.xlsx" \
+  -F 'conditions=[
+    {"column": "region", "operator": "equals", "value": "North"},
+    {"column": "region", "operator": "equals", "value": "South"}
+  ]' \
+  -F "logic=OR" \
+  -F "output_format=json" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+**Search with contains operator:**
+```bash
+curl -X POST \
+  -F "file=@products.xlsx" \
+  -F 'conditions=[{"column": "name", "operator": "contains", "value": "phone"}]' \
+  -F "logic=AND" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+**Search with between operator:**
+```bash
+curl -X POST \
+  -F "file=@transactions.xlsx" \
+  -F 'conditions=[{"column": "amount", "operator": "between", "value": [100, 500]}]' \
+  -F "logic=AND" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+#### CSV Search Endpoint
+
+**Endpoint:** `POST /api/v1/csv/search`
+
+**Description:** Same functionality as Excel search but for CSV files. All parameters, operators, and response format are identical.
+
+**cURL Example:**
+```bash
+curl -X POST \
+  -F "file=@data.csv" \
+  -F 'conditions=[
+    {"column": "email", "operator": "contains", "value": "@gmail.com"},
+    {"column": "age", "operator": "greater_than", "value": 25}
+  ]' \
+  -F "logic=AND" \
+  -F "output_format=csv" \
+  http://localhost:5050/api/v1/csv/search
+```
+
+### API 2: Suggest Search Operators
+
+Get suggested search operators for each column in your file based on the column's data type. This helps you understand which operators are valid for each column.
+
+#### Excel Suggest Operators Endpoint
+
+**Endpoint:** `POST /api/v1/excel/search/suggest-operators`
+
+**Description:** Analyzes an Excel file and suggests valid search operators for each column based on the detected data type.
+
+**Request Parameters:**
+- `file`: Excel file (required)
+
+**Response Example:**
+```json
+{
+  "data": {
+    "customer_id": {
+      "type": "object",
+      "operators": [
+        "equals",
+        "not_equals",
+        "contains",
+        "not_contains",
+        "starts_with",
+        "ends_with",
+        "is_empty",
+        "is_not_empty"
+      ]
+    },
+    "amount": {
+      "type": "float64",
+      "operators": [
+        "equals",
+        "not_equals",
+        "greater_than",
+        "greater_than_or_equal",
+        "less_than",
+        "less_than_or_equal",
+        "between"
+      ]
+    },
+    "created_at": {
+      "type": "object",
+      "operators": [
+        "equals",
+        "not_equals",
+        "contains",
+        "not_contains",
+        "starts_with",
+        "ends_with",
+        "is_empty",
+        "is_not_empty"
+      ]
+    },
+    "is_active": {
+      "type": "object",
+      "operators": [
+        "equals",
+        "not_equals",
+        "contains",
+        "not_contains",
+        "starts_with",
+        "ends_with",
+        "is_empty",
+        "is_not_empty"
+      ]
+    }
+  },
+  "message": "Operator suggestions generated successfully",
+  "meta": {
+    "api_version": "v0.0.1",
+    "locale": "en_US",
+    "request_id": "xyz789...",
+    "requested_time": "2026-02-06T12:00:00+00:00"
+  },
+  "status_code": 200,
+  "total": 0
+}
+```
+
+**cURL Example:**
+```bash
+curl -X POST \
+  -F "file=@data.xlsx" \
+  http://localhost:5050/api/v1/excel/search/suggest-operators
+```
+
+#### CSV Suggest Operators Endpoint
+
+**Endpoint:** `POST /api/v1/csv/search/suggest-operators`
+
+**Description:** Same functionality as Excel suggest operators but for CSV files.
+
+**cURL Example:**
+```bash
+curl -X POST \
+  -F "file=@data.csv" \
+  http://localhost:5050/api/v1/csv/search/suggest-operators
+```
+
+### Search API Use Cases
+
+**1. Filter Active Customers with High Value:**
+```bash
+curl -X POST \
+  -F "file=@customers.xlsx" \
+  -F 'conditions=[
+    {"column": "status", "operator": "equals", "value": "active"},
+    {"column": "lifetime_value", "operator": "greater_than", "value": 10000}
+  ]' \
+  -F "logic=AND" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+**2. Find All Gmail Users:**
+```bash
+curl -X POST \
+  -F "file=@users.csv" \
+  -F 'conditions=[{"column": "email", "operator": "ends_with", "value": "@gmail.com"}]' \
+  http://localhost:5050/api/v1/csv/search
+```
+
+**3. Filter Products in Price Range:**
+```bash
+curl -X POST \
+  -F "file=@products.xlsx" \
+  -F 'conditions=[{"column": "price", "operator": "between", "value": [50, 150]}]' \
+  -F "output_format=json" \
+  http://localhost:5050/api/v1/excel/search
+```
+
+**4. Find Records with Empty Fields:**
+```bash
+curl -X POST \
+  -F "file=@data.xlsx" \
+  -F 'conditions=[{"column": "phone", "operator": "is_empty", "value": null}]' \
+  http://localhost:5050/api/v1/excel/search
 ```
 
 ## 📊 Excel Binding APIs
