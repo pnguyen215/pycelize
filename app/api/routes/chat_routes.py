@@ -60,21 +60,18 @@ def create_conversation():
         conversation = repository.create_conversation(chat_id)
 
         # Build response
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Conversation created successfully")
-            .data(conversation.to_dict())
-            .build()
+        response = ResponseBuilder.success(
+            data=conversation.to_dict(),
+            message="Conversation created successfully"
         )
 
         return jsonify(response), 201
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to create conversation: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to create conversation: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -103,21 +100,18 @@ def list_conversations():
         conversations = repository.list_conversations(status, limit, offset)
 
         # Build response
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Conversations retrieved successfully")
-            .data({"conversations": conversations, "count": len(conversations)})
-            .build()
+        response = ResponseBuilder.success(
+            data={"conversations": conversations, "count": len(conversations)},
+            message="Conversations retrieved successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to list conversations: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to list conversations: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -139,25 +133,22 @@ def get_conversation(chat_id: str):
         conversation = repository.get_conversation(chat_id)
 
         if not conversation:
-            response = ResponseBuilder().error().message("Conversation not found").build()
+            response = ResponseBuilder.error("Conversation not found", 404)
             return jsonify(response), 404
 
         # Build response
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Conversation retrieved successfully")
-            .data(conversation.to_dict())
-            .build()
+        response = ResponseBuilder.success(
+            data=conversation.to_dict(),
+            message="Conversation retrieved successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to get conversation: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to get conversation: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -181,7 +172,7 @@ def upload_file(chat_id: str):
         # Get conversation
         conversation = repository.get_conversation(chat_id)
         if not conversation:
-            response = ResponseBuilder().error().message("Conversation not found").build()
+            response = ResponseBuilder.error("Conversation not found", 404)
             return jsonify(response), 404
 
         # Check file
@@ -214,21 +205,18 @@ def upload_file(chat_id: str):
         )
 
         # Build response
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("File uploaded successfully")
-            .data({"file_path": file_path, "filename": filename})
-            .build()
+        response = ResponseBuilder.success(
+            data={"file_path": file_path, "filename": filename},
+            message="File uploaded successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to upload file: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to upload file: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -259,7 +247,7 @@ def execute_workflow(chat_id: str):
         # Get conversation
         conversation = repository.get_conversation(chat_id)
         if not conversation:
-            response = ResponseBuilder().error().message("Conversation not found").build()
+            response = ResponseBuilder.error("Conversation not found", 404)
             return jsonify(response), 404
 
         # Get request data
@@ -310,15 +298,12 @@ def execute_workflow(chat_id: str):
             repository.update_conversation(conversation)
 
             # Build response
-            response = (
-                ResponseBuilder()
-                .success()
-                .message("Workflow executed successfully")
-                .data({
+            response = ResponseBuilder.success(
+                data={
                     "results": results,
                     "output_files": conversation.output_files,
-                })
-                .build()
+                },
+                message="Workflow executed successfully"
             )
 
             return jsonify(response), 200
@@ -331,10 +316,10 @@ def execute_workflow(chat_id: str):
             raise Exception(f"Workflow execution failed: {str(e)}")
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 500
 
 
@@ -356,25 +341,22 @@ def delete_conversation(chat_id: str):
         deleted = repository.delete_conversation(chat_id)
 
         if not deleted:
-            response = ResponseBuilder().error().message("Conversation not found").build()
+            response = ResponseBuilder.error("Conversation not found", 404)
             return jsonify(response), 404
 
         # Build response
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Conversation deleted successfully")
-            .data({"chat_id": chat_id})
-            .build()
+        response = ResponseBuilder.success(
+            data={"chat_id": chat_id},
+            message="Conversation deleted successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to delete conversation: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to delete conversation: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -402,21 +384,18 @@ def dump_conversation(chat_id: str):
         filename = os.path.basename(dump_file)
         download_url = f"/api/v1/chat/downloads/{filename}"
 
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Conversation dumped successfully")
-            .data({"dump_file": filename, "download_url": download_url})
-            .build()
+        response = ResponseBuilder.success(
+            data={"dump_file": filename, "download_url": download_url},
+            message="Conversation dumped successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to dump conversation: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to dump conversation: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -454,21 +433,18 @@ def restore_conversation():
         conversation = repository.restore_conversation(temp_path)
 
         # Build response
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Conversation restored successfully")
-            .data(conversation.to_dict())
-            .build()
+        response = ResponseBuilder.success(
+            data=conversation.to_dict(),
+            message="Conversation restored successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to restore conversation: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to restore conversation: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -493,21 +469,18 @@ def backup_sqlite():
 
         # Build response
         filename = os.path.basename(backup_file)
-        response = (
-            ResponseBuilder()
-            .success()
-            .message("Database backup created successfully")
-            .data({"backup_file": filename, "path": backup_file})
-            .build()
+        response = ResponseBuilder.success(
+            data={"backup_file": filename, "path": backup_file},
+            message="Database backup created successfully"
         )
 
         return jsonify(response), 200
 
     except ValidationError as e:
-        response = ResponseBuilder().error().message(str(e)).build()
+        response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to backup database: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to backup database: {str(e)}", 500)
         return jsonify(response), 500
 
 
@@ -530,11 +503,11 @@ def download_file(filename: str):
         file_path = os.path.join(dump_path, secure_filename(filename))
 
         if not os.path.exists(file_path):
-            response = ResponseBuilder().error().message("File not found").build()
+            response = ResponseBuilder.error("File not found", 404)
             return jsonify(response), 404
 
         return send_file(file_path, as_attachment=True, download_name=filename)
 
     except Exception as e:
-        response = ResponseBuilder().error().message(f"Failed to download file: {str(e)}").build()
+        response = ResponseBuilder.error(f"Failed to download file: {str(e)}", 500)
         return jsonify(response), 500
