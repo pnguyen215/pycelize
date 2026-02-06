@@ -112,3 +112,62 @@ logging:
 
   # Enable detailed logging
   detailed: true
+
+# =============================================================================
+# Chat Workflows Configuration
+# =============================================================================
+chat_workflows:
+  # Enable/disable chat workflows feature
+  enabled: true
+
+  # Maximum concurrent WebSocket connections
+  max_connections: 10
+
+  # WebSocket server configuration
+  websocket:
+    host: "127.0.0.1"
+    port: 5051
+    ping_interval: 30
+    ping_timeout: 10
+
+  # Storage paths
+  storage:
+    workflows_path: "./automation/workflows"
+    dumps_path: "./automation/dumps"
+    sqlite_path: "./automation/sqlite/chat.db"
+
+  # Backup configuration
+  backup:
+    enabled: true
+    interval_minutes: 60
+    snapshot_path: "./automation/sqlite/snapshots"
+    retention_days: 30
+
+  # Conversation partitioning
+  partition:
+    enabled: true
+    strategy: "time-based"  # Options: time-based, hash-based, folder-based
+    subfolder_format: "%Y/%m"  # Used for time-based partitioning
+
+  # File handling
+  file:
+    max_upload_size_mb: 50
+    allowed_extensions:
+      - ".csv"
+      - ".xlsx"
+      - ".xls"
+      - ".json"
+    chunk_size_bytes: 8192
+
+  # Workflow execution
+  execution:
+    max_steps: 50
+    step_timeout_seconds: 300
+    stream_progress: true
+    save_intermediate_files: true
+
+  # Dump and restore
+  dump:
+    compression: "gzip"  # Options: gzip, zip, tar
+    include_metadata: true
+    include_logs: true

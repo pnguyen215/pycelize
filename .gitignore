@@ -170,3 +170,9 @@ outputs/
 logs/
 test_data/
 test_data/
+
+# Chat Workflows - automation directories
+automation/workflows/
+automation/dumps/
+automation/sqlite/*.db
+automation/sqlite/snapshots/
