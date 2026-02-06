@@ -39,20 +39,23 @@ def main():
     host = config.get("app.host", "0.0.0.0") if config else "0.0.0.0"
     port = config.get("app.port", 5050) if config else 5050
     debug = config.get("app.debug", True) if config else True
+    version = config.get("app.version", "v0.0.1") if config else "v0.0.1"
+    server = f"http://{host}:{port}".format(host=host, port=port)
+    health_url = f"{server}/api/v1/health".format(host=host, port=port)
 
     print(
         f"""
-    ╔══════════════════════════════════════════════════════════════╗
-    ║                                                              ║
-    ║   🚀 Pycelize - Excel/CSV Processing API                    ║
-    ║                                                              ║
-    ║   Version: {config.get('app.version', 'v0.0.1') if config else 'v0.0.1'}                                          ║
-    ║   Server:  http://{host}:{port}                              ║
-    ║   Debug:   {debug}                                            ║
-    ║                                                              ║
-    ║   API Docs: http://{host}:{port}/api/v1/health               ║
-    ║                                                              ║
-    ╚═════════════════════════════════���════════════════════════════╝
+    ╔═══════════════════════════════════════════════════════════════════╗
+    ║                                                                   ║
+    ║   🚀 Pycelize - Excel/CSV Processing API                          ║
+    ║                                                                   ║
+    ║   Version: {version}                                                 ║
+    ║   Server:  {server}                                  ║
+    ║   Debug:   {debug}                                                   ║
+    ║                                                                   ║
+    ║   API Docs: {health_url}                   ║
+    ║                                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════╝
     """
     )
 

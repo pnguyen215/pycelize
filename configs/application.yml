@@ -10,26 +10,26 @@ app:
   version: "v0.0.1"
   description: "Professional Flask Application for Excel/CSV Processing"
   author: "Aris Nguyen"
-  
+
   # Environment settings
-  environment: "development"  # development, staging, production
+  environment: "development" # development, staging, production
   debug: true
-  
+
   # Server configuration
-  host: "0.0.0.0"
+  host: "127.0.0.1"
   port: 5050
 
 api:
   # API versioning
   version: "v1"
   prefix: "/api/v1"
-  
+
   # API metadata for responses
   locale: "en_US"
-  
+
   # Rate limiting (requests per minute)
   rate_limit: 100
-  
+
   # Request timeout in seconds
   timeout: 300
 
@@ -37,16 +37,16 @@ file:
   # Upload settings
   upload_folder: "uploads"
   output_folder: "outputs"
-  
+
   # Allowed file extensions
   allowed_extensions:
     - ".csv"
     - ".xlsx"
     - ".xls"
-  
+
   # Maximum file size in MB
   max_file_size_mb: 50
-  
+
   # Supported encodings for CSV files
   supported_encodings:
     - "utf-8"
@@ -58,16 +58,16 @@ file:
 excel:
   # Default sheet name for new Excel files
   default_sheet_name: "Sheet1"
-  
+
   # Info sheet name for metadata
   info_sheet_name: "Info"
-  
+
   # Maximum column width for auto-adjustment
   max_column_width: 50
-  
+
   # Include info sheet by default
   include_info_sheet: true
-  
+
   # Auto-adjust column widths
   auto_adjust_columns: true
 
@@ -77,38 +77,38 @@ sql:
     - "postgresql"
     - "mysql"
     - "sqlite"
-  
+
   # Default database type
   default_database: "postgresql"
-  
+
   # Default batch size for SQL generation
   default_batch_size: 1000
-  
+
   # Include transaction statements by default
   include_transaction: true
-  
+
   # Include error handling by default
   include_error_handling: true
 
 normalization:
   # Enable data normalization by default
   enabled: true
-  
+
   # Backup original data before normalization
   backup_original: true
-  
+
   # Generate normalization report
   generate_report: true
 
 logging:
   # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
   level: "DEBUG"
-  
+
   # Log format
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  
+
   # Log file path (null for console only)
   file: "logs/pycelize.log"
-  
+
   # Enable detailed logging
   detailed: true
