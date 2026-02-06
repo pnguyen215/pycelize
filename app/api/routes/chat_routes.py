@@ -286,10 +286,38 @@ def execute_workflow(chat_id: str):
         # Update status
         conversation.status = ConversationStatus.PROCESSING
         repository.update_conversation(conversation)
+        
+        # Import WebSocket bridge
+        from app.chat.websocket_bridge import websocket_bridge
+        
+        # Send workflow started notification
+        websocket_bridge.send_message(chat_id, {
+            "type": "workflow_started",
+            "chat_id": chat_id,
+            "total_steps": len(steps),
+            "message": "Workflow execution started"
+        })
+        
+        # Create progress callback for WebSocket updates
+        def progress_callback(step, progress, message):
+            """Send progress updates to WebSocket clients."""
+            try:
+                ws_message = {
+                    "type": "progress",
+                    "chat_id": chat_id,
+                    "step_id": step.step_id,
+                    "operation": step.operation,
+                    "progress": progress,
+                    "status": step.status.value if hasattr(step.status, 'value') else str(step.status),
+                    "message": message,
+                }
+                websocket_bridge.send_message(chat_id, ws_message)
+            except Exception as e:
+                logger.warning(f"Failed to send WebSocket progress update: {e}")
 
-        # Execute workflow
+        # Execute workflow with progress callback
         try:
-            results = executor.execute_workflow(steps, initial_input)
+            results = executor.execute_workflow(steps, initial_input, progress_callback)
 
             # Save output files and add download URLs
             for i, result in enumerate(results):
@@ -310,6 +338,15 @@ def execute_workflow(chat_id: str):
             # Update status
             conversation.status = ConversationStatus.COMPLETED
             repository.update_conversation(conversation)
+            
+            # Send workflow completed notification
+            websocket_bridge.send_message(chat_id, {
+                "type": "workflow_completed",
+                "chat_id": chat_id,
+                "total_steps": len(steps),
+                "output_files_count": len(conversation.output_files),
+                "message": "Workflow execution completed successfully"
+            })
             
             # Add download URLs to output files list
             output_files_with_urls = []
@@ -335,6 +372,14 @@ def execute_workflow(chat_id: str):
             # Update status on failure
             conversation.status = ConversationStatus.FAILED
             repository.update_conversation(conversation)
+            
+            # Send workflow error notification
+            websocket_bridge.send_message(chat_id, {
+                "type": "workflow_failed",
+                "chat_id": chat_id,
+                "error": str(e),
+                "message": "Workflow execution failed"
+            })
 
             raise Exception(f"Workflow execution failed: {str(e)}")
 
@@ -555,9 +600,10 @@ def download_workflow_file(chat_id: str, filename: str):
         config = current_app.config.get("PYCELIZE")
         chat_config = config.get_section("chat_workflows")
         storage_path = chat_config.get("storage", {}).get("workflows_path", "./automation/workflows")
+        db_path = chat_config.get("storage", {}).get("sqlite_path", "./automation/sqlite/chat.db")
         
         # Initialize components
-        database = ChatDatabase(config)
+        database = ChatDatabase(db_path)
         repository = ConversationRepository(database)
         
         # Get conversation to find partition key

@@ -52,8 +52,9 @@ def start_websocket_server(config):
         port = ws_config.get("port", 5051)
         max_connections = chat_config.get("max_connections", 10)
         
-        # Import WebSocket server
+        # Import WebSocket server and bridge
         from app.chat.websocket_server import ChatWebSocketServer
+        from app.chat.websocket_bridge import websocket_bridge
         
         # Create and start WebSocket server
         logger.info(f"Starting WebSocket server on ws://{host}:{port}")
@@ -62,6 +63,10 @@ def start_websocket_server(config):
         # Create new event loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        
+        # Register connection manager with bridge for cross-thread communication
+        websocket_bridge.set_connection_manager(ws_server.connection_manager, loop)
+        logger.info("WebSocket bridge configured for cross-thread communication")
         
         # Start the WebSocket server
         loop.run_until_complete(ws_server.start())
