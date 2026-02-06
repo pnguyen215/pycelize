@@ -15,6 +15,7 @@ A professional Flask application for Excel/CSV processing with comprehensive API
 - [Configuration](#configuration)
 - [API Documentation](#api-documentation)
 - [Usage Examples](#usage-examples)
+- [Chat Workflows Feature](#-chat-workflows-feature)
 - [Design Patterns](#design-patterns)
 - [Testing](#testing)
 - [Contributing](#contributing)
@@ -34,6 +35,11 @@ Pycelize is a production-ready Flask application designed for processing Excel a
 - **Excel-to-Excel Binding**: Bind values from source to target files
 - **Search and Filter**: Advanced data filtering with multiple conditions and operators
 - **Operator Suggestions**: Automatic suggestions of valid search operators based on column types
+- **Chat Workflows**: Chat-based interface for sequential file processing with real-time updates
+- **WebSocket Streaming**: Real-time progress updates for workflow execution
+- **Conversation Management**: Create, list, retrieve, and delete chat conversations
+- **Dump & Restore**: Backup and restore complete conversation data
+- **SQLite Integration**: Fast metadata indexing with backup support
 - **Standardized API Responses**: Consistent response format using Builder pattern
 
 ## 📁 Project Structure
@@ -50,7 +56,16 @@ pycelize/
 │   │       ├── normalization_routes.py
 │   │       ├── sql_routes.py
 │   │       ├── json_routes.py
-│   │       └── file_routes.py
+│   │       ├── file_routes.py
+│   │       └── chat_routes.py    # Chat Workflows API
+│   ├── chat/                     # Chat Workflows module
+│   │   ├── models.py             # Data models
+│   │   ├── database.py           # SQLite management
+│   │   ├── storage.py            # File storage
+│   │   ├── repository.py         # Repository layer
+│   │   ├── workflow_executor.py  # Workflow engine
+│   │   ├── websocket_server.py   # WebSocket server
+│   │   └── name_generator.py     # Name generator
 │   ├── core/
 │   │   ├── config.py            # Configuration management
 │   │   ├── exceptions.py        # Custom exceptions
@@ -82,6 +97,12 @@ pycelize/
 │       └── helpers.py
 ├── configs/
 │   └── application.yml          # Application configuration
+├── automation/                  # Chat Workflows storage
+│   ├── workflows/               # Conversation files
+│   ├── dumps/                   # Conversation backups
+│   └── sqlite/                  # SQLite database
+│       ├── chat.db
+│       └── snapshots/
 ├── tests/
 │   ├── test_excel_service.py
 │   ├── test_csv_service.py
@@ -1315,6 +1336,693 @@ Generated files follow the pattern:
 - Template generation: `{original_name}_generated_template_{timestamp}.json`
 
 Example: `data_generated_20260130_143022.json`
+
+## 💬 Chat Workflows Feature
+
+### Overview
+
+The Chat Workflows feature provides a chat-based interface for processing Excel/CSV files through sequential workflow operations. Users can upload files, define processing steps, and execute them as workflows with real-time progress updates via WebSocket streaming.
+
+**Key Features:**
+
+- ✅ **Chat-based workflow interface** - Intuitive conversation-driven file processing
+- ✅ **Sequential step execution** - Chain multiple operations with automatic input/output passing
+- ✅ **WebSocket streaming** - Real-time progress updates and status notifications
+- ✅ **File storage** - Organized conversation-based file management
+- ✅ **SQLite database** - Fast metadata indexing and conversation tracking
+- ✅ **Dump & restore** - Backup and restore complete conversations
+- ✅ **Auto-generated names** - Unique participant names (sea animals, land animals, celestial objects)
+- ✅ **Partitioning** - Time-based conversation organization for scalability
+
+### Architecture
+
+**Design Patterns:**
+
+- **Chain of Responsibility Pattern** - Workflow step execution
+- **Repository Pattern** - Data access abstraction
+- **Strategy Pattern** - Flexible partitioning strategies
+
+**Components:**
+
+- **Conversation Repository** - Manages conversation CRUD operations
+- **Workflow Executor** - Executes sequential workflow steps
+- **WebSocket Server** - Real-time communication and streaming
+- **SQLite Database** - Conversation metadata and indexing
+- **File Storage** - Organized file management with partitioning
+
+### Configuration
+
+Chat Workflows configuration in `configs/application.yml`:
+
+```yaml
+chat_workflows:
+  # Enable/disable the feature
+  enabled: true
+
+  # Maximum concurrent WebSocket connections
+  max_connections: 10
+
+  # WebSocket server settings
+  websocket:
+    host: "127.0.0.1"
+    port: 5051
+    ping_interval: 30
+    ping_timeout: 10
+
+  # Storage paths
+  storage:
+    workflows_path: "./automation/workflows"
+    dumps_path: "./automation/dumps"
+    sqlite_path: "./automation/sqlite/chat.db"
+
+  # Backup configuration
+  backup:
+    enabled: true
+    interval_minutes: 60
+    snapshot_path: "./automation/sqlite/snapshots"
+    retention_days: 30
+
+  # Conversation partitioning
+  partition:
+    enabled: true
+    strategy: "time-based"  # Options: time-based, hash-based, folder-based
+    subfolder_format: "%Y/%m"
+
+  # File handling
+  file:
+    max_upload_size_mb: 50
+    allowed_extensions: [".csv", ".xlsx", ".xls", ".json"]
+    chunk_size_bytes: 8192
+
+  # Workflow execution
+  execution:
+    max_steps: 50
+    step_timeout_seconds: 300
+    stream_progress: true
+    save_intermediate_files: true
+
+  # Dump and restore
+  dump:
+    compression: "gzip"
+    include_metadata: true
+    include_logs: true
+```
+
+### REST API Endpoints
+
+#### 1. Create Conversation
+
+**Endpoint:** `POST /api/v1/chat/workflows`
+
+**Description:** Create a new chat workflow conversation with auto-generated participant name.
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "chat_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "participant_name": "BlueWhale-4821",
+    "status": "created",
+    "messages": [],
+    "workflow_steps": [],
+    "uploaded_files": [],
+    "output_files": [],
+    "created_at": "2026-02-06T17:00:00Z",
+    "updated_at": "2026-02-06T17:00:00Z"
+  },
+  "message": "Conversation created successfully",
+  "status_code": 201
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST http://localhost:5050/api/v1/chat/workflows
+```
+
+#### 2. List Conversations
+
+**Endpoint:** `GET /api/v1/chat/workflows`
+
+**Query Parameters:**
+- `status` (optional): Filter by status (created, active, processing, completed, failed, archived)
+- `limit` (optional): Maximum results (default: 100)
+- `offset` (optional): Pagination offset (default: 0)
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "conversations": [
+      {
+        "chat_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "participant_name": "BlueWhale-4821",
+        "status": "completed",
+        "created_at": "2026-02-06T17:00:00Z",
+        "updated_at": "2026-02-06T17:30:00Z"
+      }
+    ],
+    "count": 1
+  },
+  "message": "Conversations retrieved successfully",
+  "status_code": 200
+}
+```
+
+**cURL Examples:**
+
+```bash
+# List all conversations
+curl http://localhost:5050/api/v1/chat/workflows
+
+# Filter by status
+curl "http://localhost:5050/api/v1/chat/workflows?status=completed&limit=10"
+```
+
+#### 3. Get Conversation Details
+
+**Endpoint:** `GET /api/v1/chat/workflows/{chat_id}`
+
+**Description:** Retrieve complete conversation details including messages, steps, and files.
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "chat_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "participant_name": "BlueWhale-4821",
+    "status": "completed",
+    "messages": [...],
+    "workflow_steps": [...],
+    "uploaded_files": ["/path/to/data.xlsx"],
+    "output_files": ["/path/to/result.xlsx"],
+    "created_at": "2026-02-06T17:00:00Z",
+    "updated_at": "2026-02-06T17:30:00Z"
+  },
+  "message": "Conversation retrieved successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl http://localhost:5050/api/v1/chat/workflows/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+#### 4. Upload File to Conversation
+
+**Endpoint:** `POST /api/v1/chat/workflows/{chat_id}/upload`
+
+**Description:** Upload a file to a conversation for processing.
+
+**Request Parameters:**
+- `file`: File to upload (multipart/form-data)
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "file_path": "./automation/workflows/2026/02/a1b2c3d4.../uploads/data.xlsx",
+    "filename": "data.xlsx"
+  },
+  "message": "File uploaded successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST \
+  -F "file=@data.xlsx" \
+  http://localhost:5050/api/v1/chat/workflows/a1b2c3d4-e5f6-7890-abcd-ef1234567890/upload
+```
+
+#### 5. Execute Workflow Steps
+
+**Endpoint:** `POST /api/v1/chat/workflows/{chat_id}/execute`
+
+**Description:** Execute sequential workflow steps with automatic input/output chaining.
+
+**Request Body:**
+
+```json
+{
+  "steps": [
+    {
+      "operation": "excel/extract-columns",
+      "arguments": {
+        "columns": ["customer_id", "amount", "status"],
+        "remove_duplicates": false
+      }
+    },
+    {
+      "operation": "excel/search",
+      "arguments": {
+        "conditions": [
+          {"column": "status", "operator": "equals", "value": "active"}
+        ],
+        "logic": "AND",
+        "output_format": "excel"
+      }
+    },
+    {
+      "operation": "normalization/apply",
+      "arguments": {
+        "normalizations": [
+          {
+            "column": "customer_id",
+            "type": "uppercase"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "results": [
+      {"output_file_path": "/path/to/step1_output.xlsx"},
+      {"output_file_path": "/path/to/step2_output.xlsx"},
+      {"output_file_path": "/path/to/step3_output.xlsx"}
+    ],
+    "output_files": [
+      "./automation/workflows/.../intermediate/step1_output.xlsx",
+      "./automation/workflows/.../intermediate/step2_output.xlsx",
+      "./automation/workflows/.../outputs/step3_output.xlsx"
+    ]
+  },
+  "message": "Workflow executed successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "steps": [
+      {
+        "operation": "excel/extract-columns",
+        "arguments": {
+          "columns": ["customer_id", "amount"],
+          "remove_duplicates": true
+        }
+      }
+    ]
+  }' \
+  http://localhost:5050/api/v1/chat/workflows/a1b2c3d4-e5f6-7890-abcd-ef1234567890/execute
+```
+
+#### 6. Delete Conversation
+
+**Endpoint:** `DELETE /api/v1/chat/workflows/{chat_id}`
+
+**Description:** Delete a conversation and all associated files.
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "chat_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  },
+  "message": "Conversation deleted successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X DELETE http://localhost:5050/api/v1/chat/workflows/a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+#### 7. Dump Conversation
+
+**Endpoint:** `POST /api/v1/chat/workflows/{chat_id}/dump`
+
+**Description:** Create a compressed archive of all conversation data including files, messages, and metadata.
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "dump_file": "a1b2c3d4-e5f6-7890-abcd-ef1234567890_20260206_173000.tar.gz",
+    "download_url": "/api/v1/chat/downloads/a1b2c3d4-e5f6-7890-abcd-ef1234567890_20260206_173000.tar.gz"
+  },
+  "message": "Conversation dumped successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST http://localhost:5050/api/v1/chat/workflows/a1b2c3d4-e5f6-7890-abcd-ef1234567890/dump
+```
+
+#### 8. Restore Conversation
+
+**Endpoint:** `POST /api/v1/chat/workflows/restore`
+
+**Description:** Restore a conversation from a dump file.
+
+**Request Parameters:**
+- `dump_file`: Dump file to restore (multipart/form-data)
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "chat_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "participant_name": "BlueWhale-4821",
+    "status": "completed",
+    ...
+  },
+  "message": "Conversation restored successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST \
+  -F "dump_file=@conversation_dump.tar.gz" \
+  http://localhost:5050/api/v1/chat/workflows/restore
+```
+
+#### 9. Backup SQLite Database
+
+**Endpoint:** `POST /api/v1/chat/sqlite/backup`
+
+**Description:** Create a snapshot backup of the SQLite database.
+
+**Response Example:**
+
+```json
+{
+  "data": {
+    "backup_file": "chat_backup_20260206_173000.db",
+    "path": "./automation/sqlite/snapshots/chat_backup_20260206_173000.db"
+  },
+  "message": "Database backup created successfully",
+  "status_code": 200
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST http://localhost:5050/api/v1/chat/sqlite/backup
+```
+
+#### 10. Download Dump File
+
+**Endpoint:** `GET /api/v1/chat/downloads/{filename}`
+
+**Description:** Download a conversation dump file.
+
+**cURL Example:**
+
+```bash
+curl -O http://localhost:5050/api/v1/chat/downloads/conversation_dump.tar.gz
+```
+
+### Supported Workflow Operations
+
+All existing APIs are available as workflow operations (except `/file/bind`):
+
+**Excel Operations:**
+- `excel/extract-columns`
+- `excel/extract-columns-to-file`
+- `excel/map-columns`
+- `excel/bind-single-key`
+- `excel/bind-multi-key`
+- `excel/search`
+
+**CSV Operations:**
+- `csv/convert-to-excel`
+- `csv/search`
+
+**Normalization Operations:**
+- `normalization/apply`
+
+**SQL Generation Operations:**
+- `sql/generate`
+- `sql/generate-to-text`
+- `sql/generate-custom-to-text`
+
+**JSON Generation Operations:**
+- `json/generate`
+- `json/generate-with-template`
+
+### WebSocket Connection
+
+**Connection URL:** `ws://127.0.0.1:5051/chat/{chat_id}`
+
+**Message Types:**
+
+1. **Connected Acknowledgment:**
+```json
+{
+  "type": "connected",
+  "chat_id": "a1b2c3d4...",
+  "timestamp": "2026-02-06T17:00:00Z"
+}
+```
+
+2. **Progress Update:**
+```json
+{
+  "type": "progress",
+  "step_id": "step-uuid",
+  "progress": 45,
+  "status": "running",
+  "message": "Processing column 'customer_id'",
+  "timestamp": "2026-02-06T17:00:15Z"
+}
+```
+
+3. **Step Result:**
+```json
+{
+  "type": "step_result",
+  "step_id": "step-uuid",
+  "result": {
+    "output_file_path": "/path/to/output.xlsx"
+  },
+  "timestamp": "2026-02-06T17:00:30Z"
+}
+```
+
+4. **Error:**
+```json
+{
+  "type": "error",
+  "step_id": "step-uuid",
+  "message": "Column 'invalid_col' not found",
+  "timestamp": "2026-02-06T17:00:45Z"
+}
+```
+
+### Workflow Execution Examples
+
+#### Example 1: Data Extraction and Filtering
+
+```bash
+# 1. Create conversation
+CHAT_ID=$(curl -s -X POST http://localhost:5050/api/v1/chat/workflows | jq -r '.data.chat_id')
+
+# 2. Upload file
+curl -X POST -F "file=@sales_data.xlsx" \
+  http://localhost:5050/api/v1/chat/workflows/$CHAT_ID/upload
+
+# 3. Execute workflow
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "steps": [
+      {
+        "operation": "excel/extract-columns",
+        "arguments": {
+          "columns": ["customer_id", "amount", "status", "date"]
+        }
+      },
+      {
+        "operation": "excel/search",
+        "arguments": {
+          "conditions": [
+            {"column": "status", "operator": "equals", "value": "completed"},
+            {"column": "amount", "operator": "greater_than", "value": 1000}
+          ],
+          "logic": "AND",
+          "output_format": "excel"
+        }
+      }
+    ]
+  }' \
+  http://localhost:5050/api/v1/chat/workflows/$CHAT_ID/execute
+```
+
+#### Example 2: CSV to Excel with Normalization
+
+```bash
+# Create conversation and upload CSV
+CHAT_ID=$(curl -s -X POST http://localhost:5050/api/v1/chat/workflows | jq -r '.data.chat_id')
+curl -X POST -F "file=@customers.csv" \
+  http://localhost:5050/api/v1/chat/workflows/$CHAT_ID/upload
+
+# Convert and normalize
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "steps": [
+      {
+        "operation": "csv/convert-to-excel",
+        "arguments": {
+          "sheet_name": "Customers"
+        }
+      },
+      {
+        "operation": "normalization/apply",
+        "arguments": {
+          "normalizations": [
+            {"column": "email", "type": "lowercase"},
+            {"column": "phone", "type": "phone_format"},
+            {"column": "name", "type": "title_case"}
+          ]
+        }
+      }
+    ]
+  }' \
+  http://localhost:5050/api/v1/chat/workflows/$CHAT_ID/execute
+```
+
+#### Example 3: SQL Generation Pipeline
+
+```bash
+# Create conversation and upload
+CHAT_ID=$(curl -s -X POST http://localhost:5050/api/v1/chat/workflows | jq -r '.data.chat_id')
+curl -X POST -F "file=@users.xlsx" \
+  http://localhost:5050/api/v1/chat/workflows/$CHAT_ID/upload
+
+# Filter and generate SQL
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "steps": [
+      {
+        "operation": "excel/search",
+        "arguments": {
+          "conditions": [
+            {"column": "is_active", "operator": "equals", "value": "true"}
+          ],
+          "logic": "AND"
+        }
+      },
+      {
+        "operation": "sql/generate",
+        "arguments": {
+          "table_name": "active_users",
+          "database_type": "postgresql",
+          "column_mapping": {
+            "user_id": "id",
+            "user_name": "name",
+            "user_email": "email"
+          }
+        }
+      }
+    ]
+  }' \
+  http://localhost:5050/api/v1/chat/workflows/$CHAT_ID/execute
+```
+
+### Conversation Storage Structure
+
+```
+automation/
+├── workflows/
+│   └── 2026/
+│       └── 02/
+│           └── {chat_id}/
+│               ├── metadata.json
+│               ├── uploads/
+│               │   └── original_file.xlsx
+│               ├── intermediate/
+│               │   ├── step1_output.xlsx
+│               │   └── step2_output.xlsx
+│               └── outputs/
+│                   └── final_output.xlsx
+├── dumps/
+│   └── {chat_id}_20260206_173000.tar.gz
+└── sqlite/
+    ├── chat.db
+    └── snapshots/
+        └── chat_backup_20260206_173000.db
+```
+
+### Error Handling
+
+**Common Error Responses:**
+
+```json
+{
+  "status_code": 422,
+  "message": "Chat workflows feature is not enabled",
+  "meta": {...}
+}
+```
+
+```json
+{
+  "status_code": 404,
+  "message": "Conversation not found",
+  "meta": {...}
+}
+```
+
+```json
+{
+  "status_code": 500,
+  "message": "Workflow execution failed: Column 'invalid_col' not found",
+  "meta": {...}
+}
+```
+
+### Best Practices
+
+1. **Enable Feature:** Ensure `chat_workflows.enabled: true` in configuration
+2. **File Uploads:** Upload files before executing workflows
+3. **Step Order:** Design steps to chain outputs correctly
+4. **Error Recovery:** Handle failed steps and review error messages
+5. **Cleanup:** Delete old conversations to manage storage
+6. **Backups:** Regular SQLite backups for data safety
+7. **Monitoring:** Use WebSocket for real-time progress tracking
+
+### Performance Considerations
+
+- **Partitioning:** Time-based partitioning improves file system performance
+- **SQLite Indexing:** Indexed queries for fast conversation retrieval
+- **Intermediate Files:** Saved for debugging but can be cleaned up
+- **WebSocket Connections:** Limited to configured max_connections
+- **Step Timeout:** Configurable per-step timeout (default: 300 seconds)
 
 ## 🎨 Design Patterns
 
