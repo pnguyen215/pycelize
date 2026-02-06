@@ -6,15 +6,13 @@ Excel and CSV files with support for multiple conditions and operators.
 """
 
 import os
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+from typing import List
 import pandas as pd
-import re
 
 from app.core.config import Config
 from app.core.exceptions import ValidationError, FileProcessingError
 from app.core.logging import get_logger
-from app.models.request import SearchCondition, SearchRequest
+from app.models.request import SearchCondition
 
 logger = get_logger(__name__)
 
@@ -123,9 +121,7 @@ class SearchService:
         operator = condition.operator.lower()
         value = condition.value
 
-        logger.debug(
-            f"Applying condition: {condition.column} {operator} {value}"
-        )
+        logger.debug(f"Applying condition: {condition.column} {operator} {value}")
 
         # String operators
         if operator == "equals":
@@ -133,9 +129,13 @@ class SearchService:
         elif operator == "not_equals":
             return column_data.astype(str) != str(value)
         elif operator == "contains":
-            return column_data.astype(str).str.contains(str(value), case=False, na=False)
+            return column_data.astype(str).str.contains(
+                str(value), case=False, na=False
+            )
         elif operator == "not_contains":
-            return ~column_data.astype(str).str.contains(str(value), case=False, na=False)
+            return ~column_data.astype(str).str.contains(
+                str(value), case=False, na=False
+            )
         elif operator == "starts_with":
             return column_data.astype(str).str.startswith(str(value), na=False)
         elif operator == "ends_with":
@@ -147,13 +147,21 @@ class SearchService:
 
         # Numeric operators
         elif operator == "greater_than":
-            return pd.to_numeric(column_data, errors="coerce") > pd.to_numeric(value, errors="coerce")
+            numeric_col = pd.to_numeric(column_data, errors="coerce")
+            compare_val = pd.to_numeric(value, errors="coerce")
+            return numeric_col > compare_val
         elif operator == "greater_than_or_equal":
-            return pd.to_numeric(column_data, errors="coerce") >= pd.to_numeric(value, errors="coerce")
+            numeric_col = pd.to_numeric(column_data, errors="coerce")
+            compare_val = pd.to_numeric(value, errors="coerce")
+            return numeric_col >= compare_val
         elif operator == "less_than":
-            return pd.to_numeric(column_data, errors="coerce") < pd.to_numeric(value, errors="coerce")
+            numeric_col = pd.to_numeric(column_data, errors="coerce")
+            compare_val = pd.to_numeric(value, errors="coerce")
+            return numeric_col < compare_val
         elif operator == "less_than_or_equal":
-            return pd.to_numeric(column_data, errors="coerce") <= pd.to_numeric(value, errors="coerce")
+            numeric_col = pd.to_numeric(column_data, errors="coerce")
+            compare_val = pd.to_numeric(value, errors="coerce")
+            return numeric_col <= compare_val
         elif operator == "between":
             # Value should be a list/tuple with [min, max]
             if not isinstance(value, (list, tuple)) or len(value) != 2:
@@ -172,14 +180,14 @@ class SearchService:
                 compare_date = pd.to_datetime(value, errors="coerce")
                 return date_col < compare_date
             except Exception:
-                raise ValidationError(f"Invalid date format for 'before' operator")
+                raise ValidationError("Invalid date format for 'before' operator")
         elif operator == "after":
             try:
                 date_col = pd.to_datetime(column_data, errors="coerce")
                 compare_date = pd.to_datetime(value, errors="coerce")
                 return date_col > compare_date
             except Exception:
-                raise ValidationError(f"Invalid date format for 'after' operator")
+                raise ValidationError("Invalid date format for 'after' operator")
 
         else:
             raise ValidationError(f"Unsupported operator: {operator}")

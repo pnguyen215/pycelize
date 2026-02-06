@@ -56,8 +56,20 @@ excel:
         return pd.DataFrame(
             {
                 "customer_id": ["021201", "021202", "021203", "021204", "021205"],
-                "name": ["John Doe", "Jane Smith", "Bob Wilson", "Alice Brown", "Charlie Davis"],
-                "email": ["john@test.com", "jane@test.com", "bob@test.com", "alice@test.com", "charlie@test.com"],
+                "name": [
+                    "John Doe",
+                    "Jane Smith",
+                    "Bob Wilson",
+                    "Alice Brown",
+                    "Charlie Davis",
+                ],
+                "email": [
+                    "john@test.com",
+                    "jane@test.com",
+                    "bob@test.com",
+                    "alice@test.com",
+                    "charlie@test.com",
+                ],
                 "amount": ["1000", "1500", "800", "2000", "1200"],
                 "status": ["active", "inactive", "active", "active", "inactive"],
             }
@@ -132,9 +144,7 @@ excel:
 
     def test_apply_search_starts_with_operator(self, service, sample_dataframe):
         """Test search with starts_with operator."""
-        conditions = [
-            SearchCondition(column="name", operator="starts_with", value="J")
-        ]
+        conditions = [SearchCondition(column="name", operator="starts_with", value="J")]
 
         result = service.apply_search(sample_dataframe, conditions, "AND")
 
@@ -156,23 +166,27 @@ excel:
 
     def test_apply_search_empty_conditions(self, service, sample_dataframe):
         """Test search with no conditions raises error."""
-        with pytest.raises(ValidationError, match="At least one search condition is required"):
+        with pytest.raises(
+            ValidationError, match="At least one search condition is required"
+        ):
             service.apply_search(sample_dataframe, [], "AND")
 
     def test_apply_search_invalid_column(self, service, sample_dataframe):
         """Test search with invalid column raises error."""
         conditions = [
-            SearchCondition(column="nonexistent_column", operator="equals", value="test")
+            SearchCondition(
+                column="nonexistent_column", operator="equals", value="test"
+            )
         ]
 
-        with pytest.raises(ValidationError, match="Column 'nonexistent_column' not found"):
+        with pytest.raises(
+            ValidationError, match="Column 'nonexistent_column' not found"
+        ):
             service.apply_search(sample_dataframe, conditions, "AND")
 
     def test_apply_search_invalid_logic(self, service, sample_dataframe):
         """Test search with invalid logic raises error."""
-        conditions = [
-            SearchCondition(column="name", operator="equals", value="test")
-        ]
+        conditions = [SearchCondition(column="name", operator="equals", value="test")]
 
         with pytest.raises(ValidationError, match="Logic must be either 'AND' or 'OR'"):
             service.apply_search(sample_dataframe, conditions, "INVALID")
@@ -272,9 +286,7 @@ excel:
 
         try:
             with pytest.raises((ValidationError, FileProcessingError)):
-                service.save_search_results(
-                    sample_dataframe, output_path, "invalid"
-                )
+                service.save_search_results(sample_dataframe, output_path, "invalid")
         finally:
             if os.path.exists(output_path):
                 os.unlink(output_path)
@@ -305,9 +317,7 @@ class TestSearchRequestModel:
     def test_search_request_default_values(self):
         """Test SearchRequest with default values."""
         data = {
-            "conditions": [
-                {"column": "name", "operator": "equals", "value": "test"}
-            ]
+            "conditions": [{"column": "name", "operator": "equals", "value": "test"}]
         }
 
         request = SearchRequest.from_dict(data)
@@ -318,11 +328,7 @@ class TestSearchRequestModel:
 
     def test_search_condition_from_dict(self):
         """Test creating SearchCondition from dictionary."""
-        data = {
-            "column": "name",
-            "operator": "equals",
-            "value": "test"
-        }
+        data = {"column": "name", "operator": "equals", "value": "test"}
 
         condition = SearchCondition.from_dict(data)
 

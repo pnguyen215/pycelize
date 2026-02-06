@@ -92,17 +92,17 @@ def get_excel_info():
 def extract_columns():
     """
     Extract data from specific columns in an Excel file.
-    
+
     Request:
         POST with multipart/form-data:
         - file: Excel file
         - columns: JSON array of column names
         - remove_duplicates: Optional boolean (default: false)
         - include_statistics: Optional boolean (default: true)
-    
+
     Returns:
         JSON with extracted column data and statistics
-    
+
     Example:
         curl -X POST -F "file=@data.xlsx" \
              -F 'columns=["name", "email"]' \
@@ -165,16 +165,16 @@ def extract_columns():
 def extract_columns_to_file():
     """
     Extract columns from Excel file and save to new Excel file.
-    
+
     Request:
         POST with multipart/form-data:
         - file: Excel file
         - columns: JSON array of column names
         - remove_duplicates: Optional boolean (default: false)
-    
+
     Returns:
         JSON with download URL for the extracted file
-    
+
     Example:
         curl -X POST -F "file=@data.xlsx" \
              -F 'columns=["name", "email"]' \
@@ -247,16 +247,16 @@ def extract_columns_to_file():
 def map_columns():
     """
     Apply column mapping to an Excel file.
-    
+
     Request:
         POST with multipart/form-data:
         - file: Excel file
         - mapping: JSON object with column mapping rules
         - output_filename: Optional output filename
-    
+
     Returns:
         Excel file with mapped columns
-    
+
     Example:
         curl -X POST -F "file=@data.xlsx" \
              -F 'mapping={"Customer Name": "name", "Email": {"source": "email", "default": "N/A"}}' \
@@ -331,10 +331,10 @@ def map_columns():
 def bind_single_key():
     """
     Bind columns from bind file to source file using a single comparison column.
-    
+
     This endpoint performs Excel-to-Excel column binding by matching rows based on
     a single comparison column and appending specified bind columns to the source file.
-    
+
     Request:
         POST with multipart/form-data:
         - source_file: Excel file (File A - will be extended with new columns)
@@ -342,10 +342,10 @@ def bind_single_key():
         - comparison_column: String (column name to match rows)
         - bind_columns: JSON array of column names to bind from File B
         - output_filename: Optional string (auto-generated if not provided)
-    
+
     Returns:
         JSON with download URL and binding statistics
-    
+
     Example:
         curl -X POST \
           -F "source_file=@source.xlsx" \
@@ -447,11 +447,11 @@ def bind_single_key():
 def bind_multi_key():
     """
     Bind columns from bind file to source file using multiple comparison columns.
-    
+
     This endpoint performs Excel-to-Excel column binding by matching rows based on
     multiple comparison columns (composite key) and appending specified bind columns
     to the source file.
-    
+
     Request:
         POST with multipart/form-data:
         - source_file: Excel file (File A - will be extended with new columns)
@@ -459,10 +459,10 @@ def bind_multi_key():
         - comparison_columns: JSON array of column names to match rows (composite key)
         - bind_columns: JSON array of column names to bind from File B
         - output_filename: Optional string (auto-generated if not provided)
-    
+
     Returns:
         JSON with download URL and binding statistics
-    
+
     Example:
         curl -X POST \
           -F "source_file=@source.xlsx" \
@@ -570,10 +570,10 @@ def bind_multi_key():
 def search_excel():
     """
     Search and filter Excel file data based on multiple conditions.
-    
+
     This endpoint allows advanced filtering of Excel data with multiple conditions
     across different columns, supporting various operators and logical combinations.
-    
+
     Request:
         POST with multipart/form-data:
         - file: Excel file
@@ -581,10 +581,10 @@ def search_excel():
         - logic: Logical operator (AND or OR) - default: AND
         - output_format: Output format (xlsx, csv, or json) - default: xlsx
         - output_filename: Optional custom output filename
-    
+
     Returns:
         JSON with download URL for the filtered results file
-    
+
     Example:
         curl -X POST -F "file=@data.xlsx" \
              -F 'conditions=[{"column": "customer_id", "operator": "equals", "value": "021201"}]' \
@@ -629,12 +629,14 @@ def search_excel():
             df = excel_service.read_excel(file_path)
 
             # Create search request
-            search_request = SearchRequest.from_dict({
-                "conditions": conditions_data,
-                "logic": logic,
-                "output_format": output_format,
-                "output_filename": output_filename,
-            })
+            search_request = SearchRequest.from_dict(
+                {
+                    "conditions": conditions_data,
+                    "logic": logic,
+                    "output_format": output_format,
+                    "output_filename": output_filename,
+                }
+            )
 
             # Apply search
             search_service = get_search_service()
@@ -653,9 +655,7 @@ def search_excel():
             output_path = os.path.join(output_folder, output_name)
 
             # Save results
-            search_service.save_search_results(
-                filtered_df, output_path, output_format
-            )
+            search_service.save_search_results(filtered_df, output_path, output_format)
 
             # Build download URL
             host = request.host
@@ -687,16 +687,16 @@ def search_excel():
 def suggest_search_operators_excel():
     """
     Suggest valid search operators for each column in an Excel file.
-    
+
     This endpoint analyzes the Excel file's column data types and suggests
     appropriate search operators for each column.
-    
+
     Request:
         POST with multipart/form-data containing 'file'
-    
+
     Returns:
         JSON with operator suggestions for each column
-    
+
     Example:
         curl -X POST -F "file=@data.xlsx" \
              http://localhost:5050/api/v1/excel/search/suggest-operators

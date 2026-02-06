@@ -245,9 +245,7 @@ class SearchRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SearchRequest":
         """Create request from dictionary."""
-        conditions = [
-            SearchCondition.from_dict(c) for c in data.get("conditions", [])
-        ]
+        conditions = [SearchCondition.from_dict(c) for c in data.get("conditions", [])]
         return cls(
             conditions=conditions,
             logic=data.get("logic", "AND").upper(),

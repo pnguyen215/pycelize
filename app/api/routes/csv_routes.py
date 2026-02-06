@@ -83,16 +83,16 @@ def get_csv_info():
 def convert_csv_to_excel():
     """
     Convert a CSV file to Excel format.
-    
+
     Request:
         POST with multipart/form-data:
         - file: CSV file
         - sheet_name: Optional sheet name (default: 'Sheet1')
         - output_filename: Optional output filename
-    
+
     Returns:
         Excel file
-    
+
     Example:
         curl -X POST -F "file=@data.csv" \
              -F "sheet_name=Data" \
@@ -130,7 +130,7 @@ def convert_csv_to_excel():
                 )
 
             # Convert
-            result_path = service.convert_to_excel(
+            service.convert_to_excel(
                 csv_path=file_path, output_path=output_path, sheet_name=sheet_name
             )
 
@@ -159,10 +159,10 @@ def convert_csv_to_excel():
 def search_csv():
     """
     Search and filter CSV file data based on multiple conditions.
-    
+
     This endpoint allows advanced filtering of CSV data with multiple conditions
     across different columns, supporting various operators and logical combinations.
-    
+
     Request:
         POST with multipart/form-data:
         - file: CSV file
@@ -170,10 +170,10 @@ def search_csv():
         - logic: Logical operator (AND or OR) - default: AND
         - output_format: Output format (xlsx, csv, or json) - default: csv
         - output_filename: Optional custom output filename
-    
+
     Returns:
         JSON with download URL for the filtered results file
-    
+
     Example:
         curl -X POST -F "file=@data.csv" \
              -F 'conditions=[{"column": "customer_id", "operator": "equals", "value": "021201"}]' \
@@ -218,12 +218,14 @@ def search_csv():
             df = csv_service.read_csv(file_path)
 
             # Create search request
-            search_request = SearchRequest.from_dict({
-                "conditions": conditions_data,
-                "logic": logic,
-                "output_format": output_format,
-                "output_filename": output_filename,
-            })
+            search_request = SearchRequest.from_dict(
+                {
+                    "conditions": conditions_data,
+                    "logic": logic,
+                    "output_format": output_format,
+                    "output_filename": output_filename,
+                }
+            )
 
             # Apply search
             search_service = get_search_service()
@@ -242,9 +244,7 @@ def search_csv():
             output_path = os.path.join(output_folder, output_name)
 
             # Save results
-            search_service.save_search_results(
-                filtered_df, output_path, output_format
-            )
+            search_service.save_search_results(filtered_df, output_path, output_format)
 
             # Build download URL
             host = request.host
@@ -276,16 +276,16 @@ def search_csv():
 def suggest_search_operators_csv():
     """
     Suggest valid search operators for each column in a CSV file.
-    
+
     This endpoint analyzes the CSV file's column data types and suggests
     appropriate search operators for each column.
-    
+
     Request:
         POST with multipart/form-data containing 'file'
-    
+
     Returns:
         JSON with operator suggestions for each column
-    
+
     Example:
         curl -X POST -F "file=@data.csv" \
              http://localhost:5050/api/v1/csv/search/suggest-operators
