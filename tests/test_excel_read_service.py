@@ -104,7 +104,7 @@ excel:
         
         # Format as text
         for row in range(2, 5):
-            for col in range(1, 2):
+            for col in range(1, 3):
                 ws.cell(row, col).number_format = '@'
         
         wb.save(excel_path)
