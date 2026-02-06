@@ -288,6 +288,77 @@ class ChatDatabase:
         shutil.copy2(self.db_path, backup_file)
         return backup_file
 
+    def save_file(self, chat_id: str, file_path: str, file_type: str) -> None:
+        """
+        Save file metadata to database.
+
+        Args:
+            chat_id: Conversation identifier
+            file_path: Path to the file
+            file_type: Type of file (uploaded or output)
+        """
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO files (chat_id, file_path, file_type, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (chat_id, file_path, file_type, datetime.utcnow().isoformat()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_files(self, chat_id: str) -> Dict[str, List[str]]:
+        """
+        Retrieve all files for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+
+        Returns:
+            Dictionary with 'uploaded' and 'output' file lists
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                "SELECT file_path, file_type FROM files WHERE chat_id = ? ORDER BY created_at",
+                (chat_id,),
+            )
+            
+            files = {"uploaded": [], "output": []}
+            for row in cursor.fetchall():
+                file_type = row["file_type"]
+                if file_type == "uploaded":
+                    files["uploaded"].append(row["file_path"])
+                elif file_type == "output":
+                    files["output"].append(row["file_path"])
+            
+            return files
+        finally:
+            conn.close()
+
+    def delete_files(self, chat_id: str) -> bool:
+        """
+        Delete all files for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+
+        Returns:
+            True if deleted, False if not found
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                "DELETE FROM files WHERE chat_id = ?", (chat_id,)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+
     def get_stats(self) -> Dict[str, int]:
         """
         Get database statistics.

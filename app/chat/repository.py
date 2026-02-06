@@ -286,11 +286,16 @@ class ConversationRepository:
         created_at = datetime.fromisoformat(conv_dict["created_at"])
         updated_at = datetime.fromisoformat(conv_dict["updated_at"])
 
+        # Get files from database
+        files = self.database.get_files(conv_dict["chat_id"])
+
         # Create conversation
         conversation = Conversation(
             chat_id=conv_dict["chat_id"],
             participant_name=conv_dict["participant_name"],
             status=ConversationStatus(conv_dict["status"]),
+            uploaded_files=files.get("uploaded", []),
+            output_files=files.get("output", []),
             metadata=conv_dict.get("metadata", {}),
             created_at=created_at,
             updated_at=updated_at,

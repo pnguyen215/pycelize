@@ -164,10 +164,10 @@ def upload_file(chat_id: str):
         Multipart form data with 'file' field
 
     Returns:
-        JSON response with file path
+        JSON response with file path and download link
     """
     try:
-        repository, _, storage, _ = get_chat_components()
+        repository, _, storage, chat_config = get_chat_components()
 
         # Get conversation
         conversation = repository.get_conversation(chat_id)
@@ -192,9 +192,8 @@ def upload_file(chat_id: str):
             chat_id, conversation.partition_key, file_content, filename
         )
 
-        # Add to conversation
-        conversation.uploaded_files.append(file_path)
-        repository.update_conversation(conversation)
+        # Save file metadata to database
+        repository.database.save_file(chat_id, file_path, "uploaded")
 
         # Add message
         repository.add_message(
@@ -204,9 +203,18 @@ def upload_file(chat_id: str):
             {"file_path": file_path},
         )
 
+        # Build download URL
+        config = current_app.config.get("PYCELIZE")
+        api_prefix = config.get("api.prefix", "/api/v1") if config else "/api/v1"
+        download_url = f"{api_prefix}/files/download?path={file_path}"
+
         # Build response
         response = ResponseBuilder.success(
-            data={"file_path": file_path, "filename": filename},
+            data={
+                "file_path": file_path, 
+                "filename": filename,
+                "download_url": download_url
+            },
             message="File uploaded successfully"
         )
 
@@ -291,7 +299,8 @@ def execute_workflow(chat_id: str):
                         result["output_file_path"],
                         is_final=(i == len(results) - 1),
                     )
-                    conversation.output_files.append(saved_path)
+                    # Save output file metadata to database
+                    repository.database.save_file(chat_id, saved_path, "output")
 
             # Update status
             conversation.status = ConversationStatus.COMPLETED
