@@ -118,6 +118,13 @@ class ExcelOperationHandler(WorkflowStepHandler):
         """Check if can handle operation."""
         return operation in self.OPERATIONS
 
+    def _generate_output_path(self, input_file_path: str, suffix: str = "") -> str:
+        """Generate output file path based on input file."""
+        base_name = os.path.splitext(os.path.basename(input_file_path))[0]
+        output_dir = os.path.dirname(input_file_path) or "."
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        return os.path.join(output_dir, f"{base_name}_{suffix}_{timestamp}.xlsx")
+
     def execute(
         self,
         step: WorkflowStep,
@@ -137,55 +144,107 @@ class ExcelOperationHandler(WorkflowStepHandler):
         result = {}
         
         try:
+            # Read input file into DataFrame for operations that need it
+            if step.operation in ["excel/extract-columns", "excel/extract-columns-to-file", "excel/map-columns"]:
+                df = service.read_excel(input_file_path)
+            
             if step.operation == "excel/extract-columns":
                 columns = step.arguments.get("columns", [])
                 remove_duplicates = step.arguments.get("remove_duplicates", False)
+                include_statistics = step.arguments.get("include_statistics", True)
                 result_data = service.extract_columns(
-                    input_file_path, columns, remove_duplicates
+                    data=df, 
+                    columns=columns, 
+                    remove_duplicates=remove_duplicates,
+                    include_statistics=include_statistics
                 )
                 result = {"data": result_data, "output_file_path": None}
 
             elif step.operation == "excel/extract-columns-to-file":
                 columns = step.arguments.get("columns", [])
                 remove_duplicates = step.arguments.get("remove_duplicates", False)
+                output_path = self._generate_output_path(input_file_path, "extracted")
                 output_path = service.extract_columns_to_file(
-                    input_file_path, columns, remove_duplicates
+                    data=df, 
+                    columns=columns, 
+                    output_path=output_path,
+                    remove_duplicates=remove_duplicates
                 )
                 result = {"output_file_path": output_path}
 
             elif step.operation == "excel/map-columns":
                 mapping = step.arguments.get("mapping", {})
-                output_path = service.map_columns(input_file_path, mapping)
+                mapped_df = service.apply_column_mapping(data=df, mapping=mapping)
+                output_path = self._generate_output_path(input_file_path, "mapped")
+                output_path = service.write_excel(
+                    data=mapped_df,
+                    output_path=output_path,
+                    sheet_name="Sheet1",
+                    include_info=True
+                )
                 result = {"output_file_path": output_path}
 
             elif step.operation == "excel/bind-single-key":
                 bind_file = step.arguments.get("bind_file")
                 comparison_column = step.arguments.get("comparison_column")
                 bind_columns = step.arguments.get("bind_columns", [])
-                output_path = binding_service.bind_single_key(
-                    input_file_path, bind_file, comparison_column, bind_columns
+                output_path = self._generate_output_path(input_file_path, "bound")
+                bind_result = binding_service.bind_excel_single_key(
+                    source_path=input_file_path, 
+                    bind_path=bind_file, 
+                    comparison_column=comparison_column, 
+                    bind_columns=bind_columns,
+                    output_path=output_path
                 )
-                result = {"output_file_path": output_path}
+                result = {"output_file_path": bind_result.get("output_path")}
 
             elif step.operation == "excel/bind-multi-key":
                 bind_file = step.arguments.get("bind_file")
                 comparison_columns = step.arguments.get("comparison_columns", [])
                 bind_columns = step.arguments.get("bind_columns", [])
-                output_path = binding_service.bind_multi_key(
-                    input_file_path, bind_file, comparison_columns, bind_columns
+                output_path = self._generate_output_path(input_file_path, "bound")
+                bind_result = binding_service.bind_excel_multi_key(
+                    source_path=input_file_path, 
+                    bind_path=bind_file, 
+                    comparison_columns=comparison_columns, 
+                    bind_columns=bind_columns,
+                    output_path=output_path
                 )
-                result = {"output_file_path": output_path}
+                result = {"output_file_path": bind_result.get("output_path")}
 
             elif step.operation == "excel/search":
                 conditions = step.arguments.get("conditions", [])
                 logic = step.arguments.get("logic", "AND")
                 output_format = step.arguments.get("output_format", "excel")
-                search_result = search_service.search_excel(
-                    input_file_path, conditions, logic, output_format
+                output_path = self._generate_output_path(input_file_path, "search")
+                
+                # Read file and apply search
+                df = service.read_excel(input_file_path)
+                from app.models.request import SearchRequest
+                search_request = SearchRequest.from_dict({
+                    "conditions": conditions,
+                    "logic": logic,
+                    "output_format": output_format
+                })
+                filtered_df = search_service.apply_search(
+                    data=df,
+                    conditions=search_request.conditions,
+                    logic=search_request.logic
                 )
+                
+                # Save results
+                search_service.save_search_results(
+                    data=filtered_df,
+                    output_path=output_path,
+                    output_format=output_format
+                )
+                
                 result = {
-                    "output_file_path": search_result.get("file_path"),
-                    "statistics": search_result.get("statistics"),
+                    "output_file_path": output_path,
+                    "statistics": {
+                        "total_rows": len(df),
+                        "filtered_rows": len(filtered_df)
+                    },
                 }
 
         except Exception as e:
@@ -202,6 +261,20 @@ class CSVOperationHandler(WorkflowStepHandler):
     def can_handle(self, operation: str) -> bool:
         """Check if can handle operation."""
         return operation in self.OPERATIONS
+
+    def _generate_output_path(self, input_file_path: str, suffix: str = "", extension: str = None) -> str:
+        """Generate output file path based on input file."""
+        base_name = os.path.splitext(os.path.basename(input_file_path))[0]
+        output_dir = os.path.dirname(input_file_path) or "."
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        
+        if extension is None:
+            # Keep original extension
+            ext = os.path.splitext(input_file_path)[1]
+        else:
+            ext = extension if extension.startswith('.') else f".{extension}"
+            
+        return os.path.join(output_dir, f"{base_name}_{suffix}_{timestamp}{ext}")
 
     def execute(
         self,
@@ -223,7 +296,8 @@ class CSVOperationHandler(WorkflowStepHandler):
             if step.operation == "csv/convert-to-excel":
                 sheet_name = step.arguments.get("sheet_name", "Sheet1")
                 output_path = csv_service.convert_to_excel(
-                    input_file_path, sheet_name
+                    csv_path=input_file_path, 
+                    sheet_name=sheet_name
                 )
                 result = {"output_file_path": output_path}
 
@@ -231,12 +305,40 @@ class CSVOperationHandler(WorkflowStepHandler):
                 conditions = step.arguments.get("conditions", [])
                 logic = step.arguments.get("logic", "AND")
                 output_format = step.arguments.get("output_format", "csv")
-                search_result = search_service.search_csv(
-                    input_file_path, conditions, logic, output_format
+                
+                # Generate output path with appropriate extension
+                ext_map = {"csv": ".csv", "xlsx": ".xlsx", "json": ".json"}
+                output_path = self._generate_output_path(
+                    input_file_path, "search", ext_map.get(output_format, ".csv")
                 )
+                
+                # Read CSV and apply search
+                df = csv_service.read_csv(input_file_path)
+                from app.models.request import SearchRequest
+                search_request = SearchRequest.from_dict({
+                    "conditions": conditions,
+                    "logic": logic,
+                    "output_format": output_format
+                })
+                filtered_df = search_service.apply_search(
+                    data=df,
+                    conditions=search_request.conditions,
+                    logic=search_request.logic
+                )
+                
+                # Save results
+                search_service.save_search_results(
+                    data=filtered_df,
+                    output_path=output_path,
+                    output_format=output_format
+                )
+                
                 result = {
-                    "output_file_path": search_result.get("file_path"),
-                    "statistics": search_result.get("statistics"),
+                    "output_file_path": output_path,
+                    "statistics": {
+                        "total_rows": len(df),
+                        "filtered_rows": len(filtered_df)
+                    },
                 }
 
         except Exception as e:
@@ -254,6 +356,13 @@ class NormalizationOperationHandler(WorkflowStepHandler):
         """Check if can handle operation."""
         return operation in self.OPERATIONS
 
+    def _generate_output_path(self, input_file_path: str, suffix: str = "") -> str:
+        """Generate output file path based on input file."""
+        base_name = os.path.splitext(os.path.basename(input_file_path))[0]
+        output_dir = os.path.dirname(input_file_path) or "."
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        return os.path.join(output_dir, f"{base_name}_{suffix}_{timestamp}.xlsx")
+
     def execute(
         self,
         step: WorkflowStep,
@@ -263,20 +372,39 @@ class NormalizationOperationHandler(WorkflowStepHandler):
     ) -> Dict[str, Any]:
         """Execute normalization operation."""
         from app.services.normalization_service import NormalizationService
+        from app.services.excel_service import ExcelService
+        from app.models.request import NormalizationConfig
 
         service = NormalizationService(config)
+        excel_service = ExcelService(config)
 
         try:
-            normalizations = step.arguments.get("normalizations", [])
+            normalizations_data = step.arguments.get("normalizations", [])
             return_report = step.arguments.get("return_report", True)
 
-            result_data = service.apply_normalizations(
-                input_file_path, normalizations, return_report
+            # Read input file
+            df = excel_service.read_excel(input_file_path)
+            
+            # Convert to NormalizationConfig objects
+            normalization_configs = [
+                NormalizationConfig.from_dict(n) for n in normalizations_data
+            ]
+            
+            # Apply normalization
+            normalized_df, report = service.normalize(df, normalization_configs)
+            
+            # Generate output path and save
+            output_path = self._generate_output_path(input_file_path, "normalized")
+            excel_service.write_excel(
+                data=normalized_df,
+                output_path=output_path,
+                sheet_name="Sheet1",
+                include_info=True
             )
 
             return {
-                "output_file_path": result_data.get("file_path"),
-                "report": result_data.get("report"),
+                "output_file_path": output_path,
+                "report": report if return_report else None,
             }
 
         except Exception as e:
@@ -296,6 +424,13 @@ class SQLGenerationHandler(WorkflowStepHandler):
         """Check if can handle operation."""
         return operation in self.OPERATIONS
 
+    def _generate_output_path(self, input_file_path: str, suffix: str = "") -> str:
+        """Generate output file path based on input file."""
+        base_name = os.path.splitext(os.path.basename(input_file_path))[0]
+        output_dir = os.path.dirname(input_file_path) or "."
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        return os.path.join(output_dir, f"{base_name}_{suffix}_{timestamp}.sql")
+
     def execute(
         self,
         step: WorkflowStep,
@@ -305,45 +440,117 @@ class SQLGenerationHandler(WorkflowStepHandler):
     ) -> Dict[str, Any]:
         """Execute SQL generation operation."""
         from app.services.sql_generation_service import SQLGenerationService
+        from app.services.excel_service import ExcelService
+        from app.models.request import SQLGenerationRequest, AutoIncrementConfig
 
         service = SQLGenerationService(config)
+        excel_service = ExcelService(config)
 
         try:
+            # Read input file
+            df = excel_service.read_excel(input_file_path)
+            
             if step.operation == "sql/generate":
                 table_name = step.arguments.get("table_name", "data")
                 column_mapping = step.arguments.get("column_mapping", {})
                 database_type = step.arguments.get("database_type", "postgresql")
-                auto_increment = step.arguments.get("auto_increment", {})
+                auto_increment_data = step.arguments.get("auto_increment", {})
+                template = step.arguments.get("template")
+                batch_size = step.arguments.get("batch_size", 1000)
+                include_transaction = step.arguments.get("include_transaction", True)
 
-                output_path = service.generate_sql(
-                    input_file_path,
-                    table_name,
-                    column_mapping,
-                    database_type,
-                    auto_increment,
+                # Build auto-increment config if provided
+                auto_increment = None
+                if auto_increment_data and auto_increment_data.get("enabled"):
+                    auto_increment = AutoIncrementConfig.from_dict(auto_increment_data)
+
+                # Create SQL generation request
+                sql_request = SQLGenerationRequest(
+                    table_name=table_name,
+                    column_mapping=column_mapping,
+                    database_type=database_type,
+                    template=template,
+                    auto_increment=auto_increment,
+                    batch_size=batch_size,
+                    include_transaction=include_transaction
                 )
+
+                # Generate SQL
+                result = service.generate_sql(df, sql_request)
+                
+                # Export to file
+                output_path = self._generate_output_path(input_file_path, "sql")
+                service.export_sql(result["statements"], output_path)
+                
                 return {"output_file_path": output_path}
 
             elif step.operation == "sql/generate-to-text":
                 table_name = step.arguments.get("table_name", "data")
                 columns = step.arguments.get("columns", [])
                 column_mapping = step.arguments.get("column_mapping", {})
+                database_type = step.arguments.get("database_type", "postgresql")
+                auto_increment_data = step.arguments.get("auto_increment", {})
                 remove_duplicates = step.arguments.get("remove_duplicates", False)
 
-                output_path = service.generate_sql_to_text(
-                    input_file_path, table_name, columns, column_mapping, remove_duplicates
+                # Extract columns if specified
+                if columns:
+                    df = df[columns].copy()
+                    if remove_duplicates:
+                        df = df.drop_duplicates()
+
+                # Build auto-increment config if provided
+                auto_increment = None
+                if auto_increment_data and auto_increment_data.get("enabled"):
+                    auto_increment = AutoIncrementConfig.from_dict(auto_increment_data)
+
+                # Create SQL generation request
+                sql_request = SQLGenerationRequest(
+                    table_name=table_name,
+                    column_mapping=column_mapping,
+                    database_type=database_type,
+                    auto_increment=auto_increment
                 )
+
+                # Generate SQL
+                result = service.generate_sql(df, sql_request)
+                
+                # Save to text file
+                output_path = self._generate_output_path(input_file_path, "sql_text")
+                service.export_sql(result["statements"], output_path)
+                
                 return {"output_file_path": output_path}
 
             elif step.operation == "sql/generate-custom-to-text":
                 columns = step.arguments.get("columns", [])
                 template = step.arguments.get("template", "")
                 column_mapping = step.arguments.get("column_mapping", {})
-                auto_increment = step.arguments.get("auto_increment", {})
+                auto_increment_data = step.arguments.get("auto_increment", {})
 
-                output_path = service.generate_custom_sql_to_text(
-                    input_file_path, columns, template, column_mapping, auto_increment
+                # Extract columns if specified
+                if columns:
+                    df = df[columns].copy()
+
+                # Build auto-increment config if provided
+                auto_increment = None
+                if auto_increment_data and auto_increment_data.get("enabled"):
+                    auto_increment = AutoIncrementConfig.from_dict(auto_increment_data)
+
+                # Create SQL generation request with custom template
+                sql_request = SQLGenerationRequest(
+                    table_name="data",  # Table name required but may not be used with custom template
+                    column_mapping=column_mapping,
+                    database_type="postgresql",
+                    template=template,
+                    auto_increment=auto_increment
                 )
+
+                # Generate SQL
+                result = service.generate_sql(df, sql_request)
+                
+                # Save to text file
+                output_path = self._generate_output_path(input_file_path, "sql_custom")
+                service.export_sql(result["statements"], output_path)
+                
                 return {"output_file_path": output_path}
 
         except Exception as e:
@@ -359,6 +566,13 @@ class JSONGenerationHandler(WorkflowStepHandler):
         """Check if can handle operation."""
         return operation in self.OPERATIONS
 
+    def _generate_output_path(self, input_file_path: str, suffix: str = "") -> str:
+        """Generate output file path based on input file."""
+        base_name = os.path.splitext(os.path.basename(input_file_path))[0]
+        output_dir = os.path.dirname(input_file_path) or "."
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        return os.path.join(output_dir, f"{base_name}_{suffix}_{timestamp}.json")
+
     def execute(
         self,
         step: WorkflowStep,
@@ -368,10 +582,15 @@ class JSONGenerationHandler(WorkflowStepHandler):
     ) -> Dict[str, Any]:
         """Execute JSON generation operation."""
         from app.services.json_generation_service import JSONGenerationService
+        from app.services.excel_service import ExcelService
 
         service = JSONGenerationService(config)
+        excel_service = ExcelService(config)
 
         try:
+            # Read input file
+            df = excel_service.read_excel(input_file_path)
+            
             if step.operation == "json/generate":
                 columns = step.arguments.get("columns", [])
                 column_mapping = step.arguments.get("column_mapping", {})
@@ -379,13 +598,21 @@ class JSONGenerationHandler(WorkflowStepHandler):
                 null_handling = step.arguments.get("null_handling", "include")
                 array_wrapper = step.arguments.get("array_wrapper", True)
 
-                output_path = service.generate_json(
-                    input_file_path,
-                    columns,
-                    column_mapping,
-                    pretty_print,
-                    null_handling,
-                    array_wrapper,
+                # Extract columns if specified
+                if columns:
+                    df = df[columns].copy()
+
+                # Generate output path
+                output_path = self._generate_output_path(input_file_path, "json")
+                
+                # Generate JSON
+                result = service.generate_json(
+                    data=df,
+                    column_mapping=column_mapping,
+                    output_path=output_path,
+                    pretty_print=pretty_print,
+                    null_handling=null_handling,
+                    array_wrapper=array_wrapper,
                 )
                 return {"output_file_path": output_path}
 
@@ -393,9 +620,19 @@ class JSONGenerationHandler(WorkflowStepHandler):
                 template = step.arguments.get("template", {})
                 column_mapping = step.arguments.get("column_mapping", {})
                 aggregation_mode = step.arguments.get("aggregation_mode", "array")
+                pretty_print = step.arguments.get("pretty_print", True)
 
-                output_path = service.generate_json_with_template(
-                    input_file_path, template, column_mapping, aggregation_mode
+                # Generate output path
+                output_path = self._generate_output_path(input_file_path, "json_template")
+                
+                # Generate JSON with template
+                result = service.generate_json_with_template(
+                    data=df,
+                    template=template,
+                    column_mapping=column_mapping,
+                    output_path=output_path,
+                    pretty_print=pretty_print,
+                    aggregation_mode=aggregation_mode,
                 )
                 return {"output_file_path": output_path}
 
