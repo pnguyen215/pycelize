@@ -143,11 +143,18 @@ class ChatDatabase:
         """
         conn = self._get_connection()
         try:
+            # Use INSERT ... ON CONFLICT DO UPDATE to avoid triggering CASCADE DELETE
             conn.execute(
                 """
-                INSERT OR REPLACE INTO conversations
+                INSERT INTO conversations
                 (chat_id, participant_name, status, partition_key, metadata, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(chat_id) DO UPDATE SET
+                    participant_name = excluded.participant_name,
+                    status = excluded.status,
+                    partition_key = excluded.partition_key,
+                    metadata = excluded.metadata,
+                    updated_at = excluded.updated_at
                 """,
                 (
                     conversation["chat_id"],

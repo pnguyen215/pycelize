@@ -7,6 +7,7 @@ combining SQLite database and file storage operations.
 
 import os
 import json
+import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -21,6 +22,8 @@ from app.chat.models import (
 from app.chat.database import ChatDatabase
 from app.chat.storage import ConversationStorage
 from app.chat.name_generator import NameGenerator
+
+logger = logging.getLogger(__name__)
 
 
 class ConversationRepository:

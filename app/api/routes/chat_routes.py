@@ -6,6 +6,7 @@ This module provides REST API endpoints for chat workflow management.
 
 import os
 import uuid
+import logging
 from datetime import datetime
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
@@ -18,6 +19,7 @@ from app.chat.repository import ConversationRepository
 from app.chat.workflow_executor import WorkflowExecutor
 from app.core.exceptions import ValidationError
 
+logger = logging.getLogger(__name__)
 chat_bp = Blueprint("chat", __name__)
 
 
