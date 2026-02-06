@@ -320,8 +320,14 @@ class ChatWebSocketServer:
 
     async def start(self) -> None:
         """Start the WebSocket server."""
+        # Create a wrapper to handle the connection properly
+        async def connection_handler(websocket):
+            # In websockets 12+, path is part of websocket.request
+            path = websocket.request.path if hasattr(websocket, 'request') else "/"
+            await self.handle_connection(websocket, path)
+        
         self.server = await websockets.serve(
-            self.handle_connection,
+            connection_handler,
             self.host,
             self.port,
             ping_interval=30,
