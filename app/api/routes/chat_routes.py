@@ -205,10 +205,9 @@ def upload_file(chat_id: str):
             {"file_path": file_path},
         )
 
-        # Build download URL
-        config = current_app.config.get("PYCELIZE")
-        api_prefix = config.get("api.prefix", "/api/v1") if config else "/api/v1"
-        download_url = f"{api_prefix}/files/download?path={file_path}"
+        # Build absolute download URL
+        # Extract just the filename for the download endpoint
+        download_url = f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}"
 
         # Build response
         response = ResponseBuilder.success(
@@ -292,7 +291,7 @@ def execute_workflow(chat_id: str):
         try:
             results = executor.execute_workflow(steps, initial_input)
 
-            # Save output files
+            # Save output files and add download URLs
             for i, result in enumerate(results):
                 if result.get("output_file_path"):
                     saved_path = storage.save_output_file(
@@ -303,16 +302,29 @@ def execute_workflow(chat_id: str):
                     )
                     # Save output file metadata to database
                     repository.database.save_file(chat_id, saved_path, "output")
+                    
+                    # Add download URL to result
+                    filename = os.path.basename(saved_path)
+                    result["download_url"] = f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}"
 
             # Update status
             conversation.status = ConversationStatus.COMPLETED
             repository.update_conversation(conversation)
+            
+            # Add download URLs to output files list
+            output_files_with_urls = []
+            for output_file in conversation.output_files:
+                filename = os.path.basename(output_file)
+                output_files_with_urls.append({
+                    "file_path": output_file,
+                    "download_url": f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}"
+                })
 
             # Build response
             response = ResponseBuilder.success(
                 data={
                     "results": results,
-                    "output_files": conversation.output_files,
+                    "output_files": output_files_with_urls,
                 },
                 message="Workflow executed successfully"
             )
@@ -391,9 +403,9 @@ def dump_conversation(chat_id: str):
         # Create dump
         dump_file = repository.dump_conversation(chat_id, dump_path)
 
-        # Build response with download link
+        # Build absolute download URL
         filename = os.path.basename(dump_file)
-        download_url = f"/api/v1/chat/downloads/{filename}"
+        download_url = f"{request.scheme}://{request.host}/api/v1/chat/downloads/{filename}"
 
         response = ResponseBuilder.success(
             data={"dump_file": filename, "download_url": download_url},
@@ -519,6 +531,84 @@ def download_file(filename: str):
 
         return send_file(file_path, as_attachment=True, download_name=filename)
 
+    except Exception as e:
+        response = ResponseBuilder.error(f"Failed to download file: {str(e)}", 500)
+        return jsonify(response), 500
+
+
+@chat_bp.route("/workflows/<chat_id>/files/<path:filename>", methods=["GET"])
+def download_workflow_file(chat_id: str, filename: str):
+    """
+    Download a workflow file (uploaded or output file) from a specific conversation.
+    
+    Args:
+        chat_id: Conversation ID
+        filename: File name
+        
+    Returns:
+        File download
+        
+    Example:
+        GET /api/v1/chat/workflows/{chat_id}/files/data.xlsx
+    """
+    try:
+        config = current_app.config.get("PYCELIZE")
+        chat_config = config.get_section("chat_workflows")
+        storage_path = chat_config.get("storage", {}).get("workflows_path", "./automation/workflows")
+        
+        # Initialize components
+        database = ChatDatabase(config)
+        repository = ConversationRepository(database)
+        
+        # Get conversation to find partition key
+        conversation = repository.get_conversation(chat_id)
+        if not conversation:
+            response = ResponseBuilder.error("Conversation not found", 404)
+            return jsonify(response), 404
+        
+        # Secure the filename
+        safe_filename = secure_filename(filename)
+        
+        # Try to find the file in uploads or outputs folder
+        partition_path = os.path.join(storage_path, conversation.partition_key, chat_id)
+        
+        # Check uploads folder first
+        file_path = os.path.join(partition_path, "uploads", safe_filename)
+        if not os.path.exists(file_path):
+            # Check outputs folder
+            file_path = os.path.join(partition_path, "outputs", safe_filename)
+        
+        if not os.path.exists(file_path):
+            response = ResponseBuilder.error("File not found", 404)
+            return jsonify(response), 404
+        
+        # Validate path is within allowed directory
+        abs_partition_path = os.path.abspath(partition_path)
+        abs_file_path = os.path.abspath(file_path)
+        
+        if not abs_file_path.startswith(abs_partition_path):
+            response = ResponseBuilder.error("Invalid file path", 400)
+            return jsonify(response), 400
+        
+        # Determine mimetype
+        if safe_filename.endswith(".xlsx"):
+            mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        elif safe_filename.endswith(".csv"):
+            mimetype = "text/csv"
+        elif safe_filename.endswith(".json"):
+            mimetype = "application/json"
+        elif safe_filename.endswith(".txt") or safe_filename.endswith(".sql"):
+            mimetype = "text/plain"
+        else:
+            mimetype = "application/octet-stream"
+        
+        return send_file(
+            abs_file_path,
+            as_attachment=True,
+            download_name=safe_filename,
+            mimetype=mimetype
+        )
+        
     except Exception as e:
         response = ResponseBuilder.error(f"Failed to download file: {str(e)}", 500)
         return jsonify(response), 500
