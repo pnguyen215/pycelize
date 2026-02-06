@@ -131,8 +131,6 @@ excel:
         assert df['product_code'].iloc[0] == '000456'
         assert df['customer_id'].iloc[0] == '00001234'
         
-        # Verify all data is string type (either 'object' or 'str')
-        assert df['zip_code'].dtype in ['object', 'str', pd.StringDtype()]
-        assert df['phone'].dtype in ['object', 'str', pd.StringDtype()]
-        assert df['product_code'].dtype in ['object', 'str', pd.StringDtype()]
-        assert df['customer_id'].dtype in ['object', 'str', pd.StringDtype()]
+        # Verify all data is string type (either 'object' or pd.StringDtype())
+        for col in ['zip_code', 'phone', 'product_code', 'customer_id']:
+            assert df[col].dtype == 'object' or isinstance(df[col].dtype, pd.StringDtype)

@@ -85,11 +85,9 @@ excel:
         assert df['product_code'].iloc[0] == '000456'
         assert df['customer_id'].iloc[0] == '00001234'
         
-        # Verify all data is string type (either 'object' or 'str')
-        assert df['zip_code'].dtype in ['object', 'str', pd.StringDtype()]
-        assert df['phone'].dtype in ['object', 'str', pd.StringDtype()]
-        assert df['product_code'].dtype in ['object', 'str', pd.StringDtype()]
-        assert df['customer_id'].dtype in ['object', 'str', pd.StringDtype()]
+        # Verify all data is string type (either 'object' or pd.StringDtype())
+        for col in ['zip_code', 'phone', 'product_code', 'customer_id']:
+            assert df[col].dtype == 'object' or isinstance(df[col].dtype, pd.StringDtype)
 
     def test_read_excel_preserves_mixed_values(self, service, tmp_path):
         """Test that reading Excel preserves mixed alphanumeric values."""
@@ -137,4 +135,4 @@ excel:
         df = service.read_excel(str(excel_path), sheet_name="Sheet2")
         
         assert df['code'].iloc[0] == '002'
-        assert df['code'].dtype in ['object', 'str', pd.StringDtype()]
+        assert df['code'].dtype == 'object' or isinstance(df['code'].dtype, pd.StringDtype)
