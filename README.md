@@ -105,18 +105,21 @@ pycelize/
 ### Steps
 
 1. **Clone the repository**
+
 ```bash
 git clone https://github.com/yourusername/pycelize.git
 cd pycelize
 ```
 
 2. **Create a virtual environment** (recommended)
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. **Install dependencies**
+
 ```bash
 make install
 # or
@@ -124,6 +127,7 @@ pip install -r requirements.txt
 ```
 
 4. **Run the application**
+
 ```bash
 make run
 # or
@@ -185,12 +189,15 @@ logging:
 ## 📚 API Documentation
 
 ### Base URL
+
 ```
 http://localhost:5050/api/v1
 ```
 
 ### Response Format
+
 All API responses follow this structure:
+
 ```json
 {
   "data": { ... },
@@ -209,66 +216,75 @@ All API responses follow this structure:
 ### Endpoints
 
 #### Health Check
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/health/ready` | Readiness check |
+
+| Method | Endpoint        | Description     |
+| ------ | --------------- | --------------- |
+| GET    | `/health`       | Health check    |
+| GET    | `/health/ready` | Readiness check |
 
 #### Excel Operations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/excel/info` | Get Excel file information |
-| POST | `/excel/extract-columns` | Extract column data (returns JSON) |
-| POST | `/excel/extract-columns-to-file` | Extract columns and save to Excel file |
-| POST | `/excel/map-columns` | Apply column mapping |
-| POST | `/excel/bind-single-key` | Bind columns using single comparison column |
-| POST | `/excel/bind-multi-key` | Bind columns using multiple comparison columns |
-| POST | `/excel/search` | Search and filter Excel data with conditions |
-| POST | `/excel/search/suggest-operators` | Get suggested search operators for each column |
+
+| Method | Endpoint                          | Description                                    |
+| ------ | --------------------------------- | ---------------------------------------------- |
+| POST   | `/excel/info`                     | Get Excel file information                     |
+| POST   | `/excel/extract-columns`          | Extract column data (returns JSON)             |
+| POST   | `/excel/extract-columns-to-file`  | Extract columns and save to Excel file         |
+| POST   | `/excel/map-columns`              | Apply column mapping                           |
+| POST   | `/excel/bind-single-key`          | Bind columns using single comparison column    |
+| POST   | `/excel/bind-multi-key`           | Bind columns using multiple comparison columns |
+| POST   | `/excel/search`                   | Search and filter Excel data with conditions   |
+| POST   | `/excel/search/suggest-operators` | Get suggested search operators for each column |
 
 #### CSV Operations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/csv/info` | Get CSV file information |
-| POST | `/csv/convert-to-excel` | Convert CSV to Excel |
-| POST | `/csv/search` | Search and filter CSV data with conditions |
-| POST | `/csv/search/suggest-operators` | Get suggested search operators for each column |
+
+| Method | Endpoint                        | Description                                    |
+| ------ | ------------------------------- | ---------------------------------------------- |
+| POST   | `/csv/info`                     | Get CSV file information                       |
+| POST   | `/csv/convert-to-excel`         | Convert CSV to Excel                           |
+| POST   | `/csv/search`                   | Search and filter CSV data with conditions     |
+| POST   | `/csv/search/suggest-operators` | Get suggested search operators for each column |
 
 #### Normalization
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/normalization/types` | List normalization types |
-| POST | `/normalization/apply` | Apply normalization |
+
+| Method | Endpoint               | Description              |
+| ------ | ---------------------- | ------------------------ |
+| GET    | `/normalization/types` | List normalization types |
+| POST   | `/normalization/apply` | Apply normalization      |
 
 #### SQL Generation
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/sql/databases` | List supported databases |
-| POST | `/sql/generate` | Generate SQL statements (returns JSON or SQL file) |
-| POST | `/sql/generate-to-text` | Generate SQL from extracted columns to text file |
-| POST | `/sql/generate-custom-to-text` | Generate SQL using custom template to text file |
+
+| Method | Endpoint                       | Description                                        |
+| ------ | ------------------------------ | -------------------------------------------------- |
+| GET    | `/sql/databases`               | List supported databases                           |
+| POST   | `/sql/generate`                | Generate SQL statements (returns JSON or SQL file) |
+| POST   | `/sql/generate-to-text`        | Generate SQL from extracted columns to text file   |
+| POST   | `/sql/generate-custom-to-text` | Generate SQL using custom template to text file    |
 
 #### JSON Generation
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/json/generate` | Generate JSON from Excel with column mapping |
-| POST | `/json/generate-with-template` | Generate JSON using custom template |
+
+| Method | Endpoint                       | Description                                  |
+| ------ | ------------------------------ | -------------------------------------------- |
+| POST   | `/json/generate`               | Generate JSON from Excel with column mapping |
+| POST   | `/json/generate-with-template` | Generate JSON using custom template          |
 
 #### File Operations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/files/downloads/<filename>` | Download generated files |
-| POST | `/files/bind` | Bind source to target file |
-| POST | `/files/bind/preview` | Preview binding operation |
+
+| Method | Endpoint                      | Description                |
+| ------ | ----------------------------- | -------------------------- |
+| GET    | `/files/downloads/<filename>` | Download generated files   |
+| POST   | `/files/bind`                 | Bind source to target file |
+| POST   | `/files/bind/preview`         | Preview binding operation  |
 
 ## 🔧 Usage Examples (cURL)
 
 ### 1. Health Check
+
 ```bash
 curl http://localhost:5050/api/v1/health
 ```
 
 ### 2. Get Excel File Information
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -276,6 +292,7 @@ curl -X POST \
 ```
 
 ### 3. Extract Columns from Excel
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -285,6 +302,7 @@ curl -X POST \
 ```
 
 ### 4. Apply Column Mapping
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -298,6 +316,7 @@ curl -X POST \
 ```
 
 ### 5. Convert CSV to Excel
+
 ```bash
 curl -X POST \
   -F "file=@data.csv" \
@@ -307,11 +326,13 @@ curl -X POST \
 ```
 
 ### 6. Get Normalization Types
+
 ```bash
 curl http://localhost:5050/api/v1/normalization/types
 ```
 
 ### 7. Apply Normalization
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -326,6 +347,7 @@ curl -X POST \
 ```
 
 ### 8. Generate SQL Statements
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -348,6 +370,7 @@ curl -X POST \
 ```
 
 ### 9. Generate SQL with Custom Template
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -360,6 +383,7 @@ curl -X POST \
 ```
 
 ### 10. Generate JSON from Excel (Standard Mapping)
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -371,6 +395,7 @@ curl -X POST \
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -384,6 +409,7 @@ curl -X POST \
 ```
 
 **Generated JSON (data_generated_20260130_101437.json):**
+
 ```json
 [
   {
@@ -400,6 +426,7 @@ curl -X POST \
 ```
 
 ### 11. Generate JSON with Custom Template
+
 ```bash
 curl -X POST \
   -F "file=@users.xlsx" \
@@ -411,6 +438,7 @@ curl -X POST \
 ```
 
 **Generated JSON:**
+
 ```json
 [
   {
@@ -435,6 +463,7 @@ curl -X POST \
 ```
 
 ### 12. Bind Excel Files
+
 ```bash
 curl -X POST \
   -F "source_file=@source_data.xlsx" \
@@ -449,6 +478,7 @@ curl -X POST \
 ```
 
 ### 13. Preview Binding Operation
+
 ```bash
 curl -X POST \
   -F "source_file=@source.xlsx" \
@@ -458,16 +488,19 @@ curl -X POST \
 ```
 
 ### 14. Extract Columns to Excel File (New Feature)
+
 Extract specific columns from an Excel file and save the result to a new Excel file. Returns a download URL for the generated file.
 
 **Description:** This endpoint extracts specified columns from an uploaded Excel file and creates a new Excel file containing only those columns. The extracted data can optionally have duplicates removed. The response includes a download URL in the standardized format.
 
 **Request Parameters:**
+
 - `file`: Excel file to extract columns from
 - `columns`: JSON array of column names to extract
 - `remove_duplicates`: Optional boolean to remove duplicate rows (default: false)
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -479,6 +512,7 @@ Extract specific columns from an Excel file and save the result to a new Excel f
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -488,11 +522,13 @@ curl -X POST \
 ```
 
 ### 13. Generate SQL to Text File - Standard (New Feature)
+
 Generate SQL INSERT statements from Excel data and save to a text file. This endpoint supports column extraction, column mapping, and auto-increment primary key generation.
 
 **Description:** This endpoint reads an Excel file, optionally extracts specific columns, applies column mapping, and generates SQL INSERT statements with optional auto-increment ID support. The generated SQL is saved to a `.txt` file and a download URL is returned.
 
 **Request Parameters:**
+
 - `file`: Excel file with source data
 - `columns`: Optional JSON array of column names to extract
 - `table_name`: Target database table name
@@ -502,6 +538,7 @@ Generate SQL INSERT statements from Excel data and save to a text file. This end
 - `remove_duplicates`: Optional boolean to remove duplicate rows (default: false)
 
 **Auto-increment Configuration:**
+
 ```json
 {
   "enabled": true,
@@ -512,6 +549,7 @@ Generate SQL INSERT statements from Excel data and save to a text file. This end
 ```
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -523,6 +561,7 @@ Generate SQL INSERT statements from Excel data and save to a text file. This end
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -536,6 +575,7 @@ curl -X POST \
 ```
 
 **Generated SQL Example:**
+
 ```sql
 -- Generated by Pycelize
 -- Generated at: 2026-01-29T15:03:39.969444
@@ -548,11 +588,13 @@ COMMIT;
 ```
 
 ### 14. Generate SQL to Text File - Custom Template (New Feature)
+
 Generate SQL statements using a custom template with placeholder substitution and save to a text file.
 
 **Description:** This endpoint provides full flexibility for SQL generation by accepting a custom SQL template string with placeholders. Placeholders are substituted with actual values from the Excel data. Supports auto-increment IDs and timestamp placeholders.
 
 **Request Parameters:**
+
 - `file`: Excel file with source data
 - `columns`: Optional JSON array of column names to extract
 - `template`: Custom SQL template string with placeholders
@@ -561,11 +603,13 @@ Generate SQL statements using a custom template with placeholder substitution an
 - `remove_duplicates`: Optional boolean to remove duplicate rows (default: false)
 
 **Template Placeholders:**
+
 - `{placeholder_name}`: Replaced with value from mapped column
 - `{auto_id}`: Auto-incremented ID value (if auto_increment is enabled)
 - `{current_timestamp}`: Replaced with CURRENT_TIMESTAMP
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -577,6 +621,7 @@ Generate SQL statements using a custom template with placeholder substitution an
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -588,6 +633,7 @@ curl -X POST \
 ```
 
 **Generated SQL Example:**
+
 ```sql
 -- Generated by Pycelize
 -- Generated at: 2026-01-29T15:04:06.412720
@@ -599,11 +645,13 @@ INSERT INTO users (id, name, email, created_at) VALUES (102, 'Bob Wilson', 'bob@
 ```
 
 ### 15. Download Generated Files
+
 Download files that were generated by other endpoints (extracted Excel files, SQL text files, etc.).
 
 **Description:** This endpoint serves generated files from the outputs folder. Files are automatically cleaned up after a certain period. The filename should match the one provided in the download URL from other endpoints.
 
 **cURL Example:**
+
 ```bash
 # Download extracted Excel file
 curl http://localhost:5050/api/v1/files/downloads/extracted_columns_20260129_120000.xlsx \
@@ -629,6 +677,7 @@ Search and filter Excel or CSV files based on multiple conditions with support f
 **Description:** Filter Excel file data using multiple conditions across columns. Supports various operators (equals, contains, greater_than, etc.) and logical combinations (AND/OR). Results can be exported as Excel, CSV, or JSON.
 
 **Request Parameters:**
+
 - `file`: Excel file (required)
 - `conditions`: JSON array of search conditions (required)
   - Each condition contains: `column`, `operator`, `value`
@@ -639,6 +688,7 @@ Search and filter Excel or CSV files based on multiple conditions with support f
 **Supported Operators:**
 
 **String Operators:**
+
 - `equals` - Exact match
 - `not_equals` - Not equal to
 - `contains` - Contains substring (case-insensitive)
@@ -649,6 +699,7 @@ Search and filter Excel or CSV files based on multiple conditions with support f
 - `is_not_empty` - Field is not empty
 
 **Numeric Operators:**
+
 - `equals` - Equal to number
 - `not_equals` - Not equal to number
 - `greater_than` - Greater than
@@ -658,12 +709,14 @@ Search and filter Excel or CSV files based on multiple conditions with support f
 - `between` - Between two values (value must be [min, max])
 
 **Date Operators:**
+
 - `equals` - Exact date match
 - `before` - Before date
 - `after` - After date
 - `between` - Between two dates
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -687,6 +740,7 @@ Search and filter Excel or CSV files based on multiple conditions with support f
 **cURL Examples:**
 
 **Simple equals search:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -697,6 +751,7 @@ curl -X POST \
 ```
 
 **Multiple conditions with AND logic:**
+
 ```bash
 curl -X POST \
   -F "file=@sales_data.xlsx" \
@@ -710,6 +765,7 @@ curl -X POST \
 ```
 
 **Search with OR logic:**
+
 ```bash
 curl -X POST \
   -F "file=@customers.xlsx" \
@@ -723,6 +779,7 @@ curl -X POST \
 ```
 
 **Search with contains operator:**
+
 ```bash
 curl -X POST \
   -F "file=@products.xlsx" \
@@ -732,6 +789,7 @@ curl -X POST \
 ```
 
 **Search with between operator:**
+
 ```bash
 curl -X POST \
   -F "file=@transactions.xlsx" \
@@ -747,6 +805,7 @@ curl -X POST \
 **Description:** Same functionality as Excel search but for CSV files. All parameters, operators, and response format are identical.
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.csv" \
@@ -770,9 +829,11 @@ Get suggested search operators for each column in your file based on the column'
 **Description:** Analyzes an Excel file and suggests valid search operators for each column based on the detected data type.
 
 **Request Parameters:**
+
 - `file`: Excel file (required)
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -841,6 +902,7 @@ Get suggested search operators for each column in your file based on the column'
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -854,6 +916,7 @@ curl -X POST \
 **Description:** Same functionality as Excel suggest operators but for CSV files.
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.csv" \
@@ -863,6 +926,7 @@ curl -X POST \
 ### Search API Use Cases
 
 **1. Filter Active Customers with High Value:**
+
 ```bash
 curl -X POST \
   -F "file=@customers.xlsx" \
@@ -875,6 +939,7 @@ curl -X POST \
 ```
 
 **2. Find All Gmail Users:**
+
 ```bash
 curl -X POST \
   -F "file=@users.csv" \
@@ -883,6 +948,7 @@ curl -X POST \
 ```
 
 **3. Filter Products in Price Range:**
+
 ```bash
 curl -X POST \
   -F "file=@products.xlsx" \
@@ -892,6 +958,7 @@ curl -X POST \
 ```
 
 **4. Find Records with Empty Fields:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -902,9 +969,11 @@ curl -X POST \
 ## 📊 Excel Binding APIs
 
 ### Overview
+
 The Excel Binding APIs provide advanced column binding capabilities that allow you to merge data from two Excel files based on matching column values. This is useful for enriching data with reference information, adding lookup values, or combining related datasets.
 
 ### Use Cases
+
 - **Data Enrichment**: Add customer details (email, phone) to transaction records by matching customer IDs
 - **Reference Lookups**: Append product information to order data using product codes
 - **Data Integration**: Merge employee data from multiple sources using composite keys (first name + last name)
@@ -913,7 +982,8 @@ The Excel Binding APIs provide advanced column binding capabilities that allow y
 
 Bind columns from a bind file to a source file using a single comparison column. This performs a left join operation, preserving all rows from the source file.
 
-**Description:** 
+**Description:**
+
 - Takes two Excel files: source file (File A) and bind file (File B)
 - Matches rows based on a single comparison column
 - Appends specified columns from File B to File A
@@ -921,6 +991,7 @@ Bind columns from a bind file to a source file using a single comparison column.
 - Returns NaN for rows without matches
 
 **Request Parameters:**
+
 - `source_file`: Excel file to be extended with new columns (File A)
 - `bind_file`: Excel file containing data to bind (File B)
 - `comparison_column`: Column name used to match rows between files
@@ -928,6 +999,7 @@ Bind columns from a bind file to a source file using a single comparison column.
 - `output_filename`: Optional custom output filename
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -946,6 +1018,7 @@ Bind columns from a bind file to a source file using a single comparison column.
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "source_file=@source.xlsx" \
@@ -960,23 +1033,23 @@ curl -X POST \
 **File A (source.xlsx) - Before:**
 | s_1_name | existing_col |
 |----------|--------------|
-| Alice    | data1        |
-| Bob      | data2        |
-| Charlie  | data3        |
+| Alice | data1 |
+| Bob | data2 |
+| Charlie | data3 |
 
 **File B (bind.xlsx):**
 | s_1_name | s_1_id |
 |----------|--------|
-| Alice    | 101    |
-| Bob      | 102    |
-| David    | 103    |
+| Alice | 101 |
+| Bob | 102 |
+| David | 103 |
 
 **Result (source_data_bound_single.xlsx) - After:**
 | s_1_name | existing_col | s_1_id |
 |----------|--------------|--------|
-| Alice    | data1        | 101    |
-| Bob      | data2        | 102    |
-| Charlie  | data3        | NaN    |
+| Alice | data1 | 101 |
+| Bob | data2 | 102 |
+| Charlie | data3 | NaN |
 
 **Note:** Charlie's row remains but has NaN for s_1_id since there's no match in File B.
 
@@ -985,12 +1058,14 @@ curl -X POST \
 Bind columns from a bind file to a source file using multiple comparison columns for matching. This is useful when a single column isn't unique enough for matching.
 
 **Description:**
+
 - Similar to single-key binding but uses multiple columns together as a composite key
 - Matches rows only when ALL comparison columns match
 - Useful for matching on combinations like (first_name + last_name) or (country + city)
 - All original data in File A is preserved
 
 **Request Parameters:**
+
 - `source_file`: Excel file to be extended (File A)
 - `bind_file`: Excel file with data to bind (File B)
 - `comparison_columns`: JSON array of column names used together for matching
@@ -998,6 +1073,7 @@ Bind columns from a bind file to a source file using multiple comparison columns
 - `output_filename`: Optional custom output filename
 
 **Response Example:**
+
 ```json
 {
   "data": {
@@ -1016,6 +1092,7 @@ Bind columns from a bind file to a source file using multiple comparison columns
 ```
 
 **cURL Example:**
+
 ```bash
 curl -X POST \
   -F "source_file=@source.xlsx" \
@@ -1030,29 +1107,30 @@ curl -X POST \
 **File A (source.xlsx) - Before:**
 | first_name | last_name | department |
 |------------|-----------|------------|
-| John       | Doe       | IT         |
-| Jane       | Smith     | HR         |
-| John       | Smith     | Finance    |
+| John | Doe | IT |
+| Jane | Smith | HR |
+| John | Smith | Finance |
 
 **File B (bind.xlsx):**
-| first_name | last_name | email              | phone        |
-|------------|-----------|--------------------|--------------| 
-| John       | Doe       | john.doe@corp.com  | 555-0101     |
-| Jane       | Smith     | jane.smith@corp.com| 555-0102     |
-| Mike       | Johnson   | mike.j@corp.com    | 555-0103     |
+| first_name | last_name | email | phone |
+|------------|-----------|--------------------|--------------|
+| John | Doe | john.doe@corp.com | 555-0101 |
+| Jane | Smith | jane.smith@corp.com| 555-0102 |
+| Mike | Johnson | mike.j@corp.com | 555-0103 |
 
 **Result (source_data_bound_multi.xlsx) - After:**
-| first_name | last_name | department | email               | phone    |
+| first_name | last_name | department | email | phone |
 |------------|-----------|------------|---------------------|----------|
-| John       | Doe       | IT         | john.doe@corp.com   | 555-0101 |
-| Jane       | Smith     | HR         | jane.smith@corp.com | 555-0102 |
-| John       | Smith     | Finance    | NaN                 | NaN      |
+| John | Doe | IT | john.doe@corp.com | 555-0101 |
+| Jane | Smith | HR | jane.smith@corp.com | 555-0102 |
+| John | Smith | Finance | NaN | NaN |
 
 **Note:** "John Smith" in File A doesn't match any row in File B (only "John Doe" and "Jane Smith" exist), so email and phone are NaN.
 
 ### Binding Features & Behavior
 
 **Key Features:**
+
 - **Preserves Original Data**: All columns and rows from source file are kept
 - **Left Join Logic**: All source rows appear in output, matched or not
 - **Duplicate Handling**: If bind file has duplicate keys, first match is used
@@ -1061,11 +1139,13 @@ curl -X POST \
 - **Type Preservation**: Data types are maintained during binding
 
 **Error Handling:**
+
 - `422 Validation Error`: Missing columns, column conflicts, invalid JSON
 - `400 File Processing Error`: File read/write failures
 - `500 Server Error`: Unexpected internal errors
 
 **Performance Tips:**
+
 - Remove duplicates from bind file before uploading for faster processing
 - Use single-key binding when possible (faster than multi-key)
 - Consider file size limits when working with large datasets
@@ -1079,6 +1159,7 @@ The JSON generation feature provides flexible ways to transform Excel data into 
 Generate JSON from Excel data by mapping Excel columns to JSON keys.
 
 **Parameters:**
+
 - `file`: Excel file (required)
 - `column_mapping`: JSON object mapping Excel columns to JSON keys (optional, uses all columns if not provided)
 - `columns`: JSON array of column names to extract before generation (optional)
@@ -1088,11 +1169,13 @@ Generate JSON from Excel data by mapping Excel columns to JSON keys.
 - `output_filename`: Optional custom filename
 
 **Null Handling Strategies:**
+
 - `include`: Keep null values as `null` in JSON
 - `exclude`: Remove keys with null values from JSON objects
 - `default`: Replace null values with empty strings
 
 **Example:**
+
 ```bash
 curl -X POST \
   -F "file=@data.xlsx" \
@@ -1106,6 +1189,7 @@ curl -X POST \
 Generate JSON using custom templates with placeholder substitution. This allows for nested structures and complex JSON schemas.
 
 **Parameters:**
+
 - `file`: Excel file (required)
 - `template`: JSON template string or object with placeholders (required)
 - `column_mapping`: JSON object mapping placeholders to Excel columns (required)
@@ -1114,11 +1198,13 @@ Generate JSON using custom templates with placeholder substitution. This allows 
 - `output_filename`: Optional custom filename
 
 **Aggregation Modes:**
+
 - `array`: Returns array of objects (default)
 - `single`: Returns single object (for one row) or array (for multiple rows)
 - `nested`: Returns object with `items` array and `count` field
 
 **Placeholder Syntax:**
+
 - `{column_name}`: Basic substitution
 - `{column_name:int}`: Convert to integer
 - `{column_name:float}`: Convert to float
@@ -1129,6 +1215,7 @@ Generate JSON using custom templates with placeholder substitution. This allows 
 **Template Examples:**
 
 1. **Simple Template:**
+
 ```json
 {
   "id": "{user_id}",
@@ -1138,6 +1225,7 @@ Generate JSON using custom templates with placeholder substitution. This allows 
 ```
 
 2. **Nested Structure:**
+
 ```json
 {
   "user": {
@@ -1157,6 +1245,7 @@ Generate JSON using custom templates with placeholder substitution. This allows 
 ```
 
 3. **With Type Conversion:**
+
 ```json
 {
   "id": "{user_id:int}",
@@ -1166,6 +1255,7 @@ Generate JSON using custom templates with placeholder substitution. This allows 
 ```
 
 4. **With Default Values:**
+
 ```json
 {
   "name": "{name}",
@@ -1175,6 +1265,7 @@ Generate JSON using custom templates with placeholder substitution. This allows 
 ```
 
 **Example Usage:**
+
 ```bash
 curl -X POST \
   -F "file=@users.xlsx" \
@@ -1219,6 +1310,7 @@ Both endpoints return the same response structure:
 ### File Naming Convention
 
 Generated files follow the pattern:
+
 - Standard generation: `{original_name}_generated_{timestamp}.json`
 - Template generation: `{original_name}_generated_template_{timestamp}.json`
 
@@ -1227,7 +1319,9 @@ Example: `data_generated_20260130_143022.json`
 ## 🎨 Design Patterns
 
 ### 1. Builder Pattern (ResponseBuilder)
+
 Used for constructing standardized API responses:
+
 ```python
 response = (
     ResponseBuilder()
@@ -1239,14 +1333,18 @@ response = (
 ```
 
 ### 2. Factory Pattern (NormalizerFactory)
+
 Used for creating normalization strategy instances:
+
 ```python
 strategy = NormalizerFactory.create(NormalizationType.UPPERCASE)
 normalized_series = strategy.normalize(data_series)
 ```
 
 ### 3. Strategy Pattern (Normalization Strategies)
+
 Used for implementing interchangeable normalization algorithms:
+
 ```python
 class UppercaseStrategy(NormalizationStrategy):
     def normalize(self, series: pd.Series) -> pd.Series:
@@ -1256,39 +1354,41 @@ class UppercaseStrategy(NormalizationStrategy):
 ## 🧪 Testing
 
 Run the test suite:
+
 ```bash
 make test
 ```
 
 Run tests with coverage:
+
 ```bash
 make test-cov
 ```
 
 ## 📝 Available Normalization Types
 
-| Type | Description |
-|------|-------------|
-| `uppercase` | Convert to uppercase |
-| `lowercase` | Convert to lowercase |
-| `title_case` | Convert to title case |
-| `trim_whitespace` | Remove leading/trailing whitespace |
-| `remove_special_chars` | Remove special characters |
-| `phone_format` | Format phone numbers |
-| `email_format` | Format email addresses |
-| `name_format` | Format personal names |
-| `min_max_scale` | Scale to 0-1 range |
-| `z_score` | Standardize using z-score |
-| `round_decimal` | Round to decimals |
-| `integer_convert` | Convert to integer |
-| `currency_format` | Parse currency values |
-| `date_format` | Format dates |
-| `datetime_format` | Format datetime |
-| `boolean_convert` | Convert to boolean |
-| `yes_no_convert` | Convert to Yes/No |
-| `regex_replace` | Replace using regex |
-| `fill_null_values` | Fill null values |
-| `outlier_removal` | Remove outliers |
+| Type                   | Description                        |
+| ---------------------- | ---------------------------------- |
+| `uppercase`            | Convert to uppercase               |
+| `lowercase`            | Convert to lowercase               |
+| `title_case`           | Convert to title case              |
+| `trim_whitespace`      | Remove leading/trailing whitespace |
+| `remove_special_chars` | Remove special characters          |
+| `phone_format`         | Format phone numbers               |
+| `email_format`         | Format email addresses             |
+| `name_format`          | Format personal names              |
+| `min_max_scale`        | Scale to 0-1 range                 |
+| `z_score`              | Standardize using z-score          |
+| `round_decimal`        | Round to decimals                  |
+| `integer_convert`      | Convert to integer                 |
+| `currency_format`      | Parse currency values              |
+| `date_format`          | Format dates                       |
+| `datetime_format`      | Format datetime                    |
+| `boolean_convert`      | Convert to boolean                 |
+| `yes_no_convert`       | Convert to Yes/No                  |
+| `regex_replace`        | Replace using regex                |
+| `fill_null_values`     | Fill null values                   |
+| `outlier_removal`      | Remove outliers                    |
 
 ## 🤝 Contributing
 
