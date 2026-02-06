@@ -79,6 +79,17 @@ def _ensure_directories(config: Config) -> None:
         "logs",
     ]
 
+    # Add chat workflows directories if enabled
+    chat_config = config.get_section("chat_workflows")
+    if chat_config and chat_config.get("enabled", False):
+        storage_config = chat_config.get("storage", {})
+        directories.extend([
+            storage_config.get("workflows_path", "./automation/workflows"),
+            storage_config.get("dumps_path", "./automation/dumps"),
+            os.path.dirname(storage_config.get("sqlite_path", "./automation/sqlite/chat.db")),
+            chat_config.get("backup", {}).get("snapshot_path", "./automation/sqlite/snapshots"),
+        ])
+
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
 
@@ -97,6 +108,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.routes.sql_routes import sql_bp
     from app.api.routes.file_routes import file_bp
     from app.api.routes.json_routes import json_bp
+    from app.api.routes.chat_routes import chat_bp
 
     # Get API prefix from config
     config = app.config.get("PYCELIZE")
@@ -110,3 +122,4 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(sql_bp, url_prefix=f"{api_prefix}/sql")
     app.register_blueprint(file_bp, url_prefix=f"{api_prefix}/files")
     app.register_blueprint(json_bp, url_prefix=f"{api_prefix}/json")
+    app.register_blueprint(chat_bp, url_prefix=f"{api_prefix}/chat")
