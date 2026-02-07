@@ -146,8 +146,8 @@ chat_workflows:
   # Conversation partitioning
   partition:
     enabled: true
-    strategy: "time-based"  # Options: time-based, hash-based, folder-based
-    subfolder_format: "%Y/%m"  # Used for time-based partitioning
+    strategy: "time-based" # Options: time-based, hash-based, folder-based
+    subfolder_format: "%Y/%m" # Used for time-based partitioning
 
   # File handling
   file:
@@ -168,6 +168,6 @@ chat_workflows:
 
   # Dump and restore
   dump:
-    compression: "gzip"  # Options: gzip, zip, tar
+    compression: "gzip" # Options: gzip, zip, tar
     include_metadata: true
     include_logs: true

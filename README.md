@@ -39,7 +39,7 @@ Pycelize is a production-ready Flask application designed for processing Excel a
 Pycelize now includes **Chat Workflows** - a powerful feature for sequential file processing with real-time progress tracking via WebSocket. This enables:
 
 - **Conversational processing**: Process files through multi-step workflows
-- **Real-time updates**: Monitor progress via WebSocket streaming  
+- **Real-time updates**: Monitor progress via WebSocket streaming
 - **Dump & Restore**: Backup and restore complete conversations
 - **Partition-based storage**: Scalable file organization
 - **Download management**: Absolute URLs for easy file access
@@ -154,7 +154,6 @@ pycelize/
 └── README.md
 ```
 
-
 ---
 
 ## 🔄 Chat Workflows
@@ -229,7 +228,6 @@ Chat Workflows provide a powerful conversational interface for sequential file p
 
 ---
 
-
 ## 3. Workflow Lifecycle
 
 ### Workflow States
@@ -288,7 +286,6 @@ created → processing → completed
 
 ---
 
-
 ## 4. Dump and Restore System
 
 ### Dump Process
@@ -296,6 +293,7 @@ created → processing → completed
 **Purpose**: Create a complete backup of a conversation including all files and metadata.
 
 **Process**:
+
 1. Retrieve conversation from database
 2. Create tar.gz archive of conversation directory
 3. Include partition structure in archive
@@ -303,11 +301,13 @@ created → processing → completed
 5. Return download URL
 
 **API Endpoint**:
+
 ```bash
 POST /api/v1/chat/workflows/{chat_id}/dump
 ```
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -319,6 +319,7 @@ POST /api/v1/chat/workflows/{chat_id}/dump
 ```
 
 **Archive Structure**:
+
 ```
 chat-id_timestamp.tar.gz
 └── {chat_id}/
@@ -334,6 +335,7 @@ chat-id_timestamp.tar.gz
 **Purpose**: Restore a conversation from a backup dump file.
 
 **Process**:
+
 1. Upload dump file via multipart form
 2. Extract to temporary directory
 3. Read `metadata.json` to get `partition_key`
@@ -342,6 +344,7 @@ chat-id_timestamp.tar.gz
 6. Return restored conversation details
 
 **API Endpoint**:
+
 ```bash
 POST /api/v1/chat/workflows/restore
 Content-Type: multipart/form-data
@@ -350,6 +353,7 @@ dump_file: @path/to/dump.tar.gz
 ```
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -366,15 +370,16 @@ dump_file: @path/to/dump.tar.gz
 ### Important Notes
 
 ✅ **Recent Fix**: Restore now correctly places files in partitioned directories
+
 - Old behavior: Files extracted to `./automation/workflows/{chat_id}` (flat)
 - New behavior: Files extracted to `./automation/workflows/{partition_key}/{chat_id}` (partitioned)
 
 ✅ **Recent Fix**: Dump file paths now correctly resolved
+
 - Uses `os.path.abspath()` for consistent path resolution
 - Downloads work correctly
 
 ---
-
 
 ## 5. File Storage Structure
 
@@ -399,16 +404,19 @@ automation/
 ### File Types
 
 #### Uploaded Files
+
 - Location: `{base_path}/{partition_key}/{chat_id}/uploads/`
 - Naming: Original filename preserved
 - Purpose: Input files for workflow processing
 
 #### Output Files
+
 - Location: `{base_path}/{partition_key}/{chat_id}/outputs/`
 - Naming: `{original}_{operation}_{timestamp}.{ext}`
 - Purpose: Results from workflow step execution
 
 #### Dump Files
+
 - Location: `{base_path}/dumps/`
 - Naming: `{chat_id}_{timestamp}.tar.gz`
 - Purpose: Complete conversation backup
@@ -422,12 +430,12 @@ automation/
 
 ---
 
-
 ## 6. Partition System
 
 ### Purpose
 
 Partitioning organizes conversations into hierarchical directories for:
+
 - **Performance**: Faster file system operations
 - **Scalability**: Handle millions of conversations
 - **Organization**: Logical grouping by time or hash
@@ -438,6 +446,7 @@ Partitioning organizes conversations into hierarchical directories for:
 #### 1. Time-Based (Default)
 
 Partitions by year and month:
+
 ```
 automation/workflows/
 ├── 2026/
@@ -457,6 +466,7 @@ automation/workflows/
 #### 2. Hash-Based
 
 Partitions by chat_id hash:
+
 ```
 automation/workflows/
 ├── ab/
@@ -478,7 +488,7 @@ automation/workflows/
 chat_workflows:
   partition:
     enabled: true
-    strategy: "time-based"  # or "hash-based"
+    strategy: "time-based" # or "hash-based"
 ```
 
 ### Partition Key Generation
@@ -492,7 +502,6 @@ partition_key = f"{chat_id[:2]}/{chat_id[2:4]}"  # "ab/cd"
 ```
 
 ---
-
 
 ---
 
@@ -587,7 +596,6 @@ logging:
   file: "logs/pycelize.log"
 ```
 
-
 ## 📚 API Documentation
 
 ### Base URL
@@ -676,7 +684,6 @@ All API responses follow this structure:
 | GET    | `/files/downloads/<filename>` | Download generated files   |
 | POST   | `/files/bind`                 | Bind source to target file |
 | POST   | `/files/bind/preview`         | Preview binding operation  |
-
 
 ## 🔧 Usage Examples (cURL)
 
@@ -1065,7 +1072,6 @@ curl http://localhost:5050/api/v1/files/downloads/sql_statements_20260129_120000
   --output inserts.sql
 ```
 
-
 ## 🔍 Search and Filter APIs
 
 The Search and Filter APIs provide powerful data filtering capabilities for Excel and CSV files. You can apply multiple search conditions across different columns with various operators, and export the filtered results in different formats.
@@ -1370,7 +1376,6 @@ curl -X POST \
   http://localhost:5050/api/v1/excel/search
 ```
 
-
 ## 📊 Excel Binding APIs
 
 ### Overview
@@ -1555,7 +1560,6 @@ curl -X POST \
 - Use single-key binding when possible (faster than multi-key)
 - Consider file size limits when working with large datasets
 
-
 ## 📄 JSON Generation Features
 
 The JSON generation feature provides flexible ways to transform Excel data into JSON format with support for standard column mapping and custom template-based generation.
@@ -1722,12 +1726,12 @@ Generated files follow the pattern:
 
 Example: `data_generated_20260130_143022.json`
 
-
 ---
 
 ## 📡 Chat Workflows API Reference
 
 ### Base URL
+
 ```
 http://localhost:5050/api/v1
 ```
@@ -1735,11 +1739,13 @@ http://localhost:5050/api/v1
 ### Chat Workflows Endpoints
 
 #### 1. Create Conversation
+
 ```bash
 POST /chat/workflows
 ```
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -1755,21 +1761,25 @@ POST /chat/workflows
 ```
 
 #### 2. List Conversations
+
 ```bash
 GET /chat/workflows?status=created&limit=100&offset=0
 ```
 
 **Query Parameters**:
+
 - `status`: Filter by status (created, processing, completed, failed)
 - `limit`: Results per page (default: 100)
 - `offset`: Pagination offset (default: 0)
 
 #### 3. Get Conversation
+
 ```bash
 GET /chat/workflows/{chat_id}
 ```
 
 #### 4. Upload File
+
 ```bash
 POST /chat/workflows/{chat_id}/upload
 Content-Type: multipart/form-data
@@ -1778,6 +1788,7 @@ file: @path/to/file.xlsx
 ```
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -1791,6 +1802,7 @@ file: @path/to/file.xlsx
 ✅ **Recent Fix**: Download URLs are now absolute and clickable
 
 #### 5. Execute Workflow
+
 ```bash
 POST /chat/workflows/{chat_id}/execute
 Content-Type: application/json
@@ -1809,6 +1821,7 @@ Content-Type: application/json
 ```
 
 **Response**:
+
 ```json
 {
   "data": {
@@ -1831,11 +1844,13 @@ Content-Type: application/json
 ✅ **Recent Fix**: Each output file includes download_url
 
 #### 6. Delete Conversation
+
 ```bash
 DELETE /chat/workflows/{chat_id}
 ```
 
 #### 7. Dump Conversation
+
 ```bash
 POST /chat/workflows/{chat_id}/dump
 ```
@@ -1843,6 +1858,7 @@ POST /chat/workflows/{chat_id}/dump
 ✅ **Recent Fix**: Dump files now created correctly and downloadable
 
 #### 8. Restore Conversation
+
 ```bash
 POST /chat/workflows/restore
 Content-Type: multipart/form-data
@@ -1853,6 +1869,7 @@ dump_file: @path/to/dump.tar.gz
 ✅ **Recent Fix**: Files now restored to correct partition paths
 
 #### 9. Download Workflow File
+
 ```bash
 GET /chat/workflows/{chat_id}/files/{filename}
 ```
@@ -1860,6 +1877,7 @@ GET /chat/workflows/{chat_id}/files/{filename}
 ✅ **New Endpoint**: Download uploaded or output files
 
 #### 10. Download Dump File
+
 ```bash
 GET /chat/downloads/{filename}
 ```
@@ -1870,17 +1888,16 @@ GET /chat/downloads/{filename}
 
 ## 🔌 WebSocket Integration
 
-
-
 ### Connection
 
 ```javascript
-const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
+const ws = new WebSocket("ws://127.0.0.1:5051/chat/{chat_id}");
 ```
 
 ### Message Types
 
 #### 1. Connected (Welcome)
+
 ```json
 {
   "type": "connected",
@@ -1890,6 +1907,7 @@ const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
 ```
 
 #### 2. Workflow Started
+
 ```json
 {
   "type": "workflow_started",
@@ -1900,6 +1918,7 @@ const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
 ```
 
 #### 3. Progress Update
+
 ```json
 {
   "type": "progress",
@@ -1912,6 +1931,7 @@ const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
 ```
 
 #### 4. Workflow Completed
+
 ```json
 {
   "type": "workflow_completed",
@@ -1923,6 +1943,7 @@ const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
 ```
 
 #### 5. Workflow Failed
+
 ```json
 {
   "type": "workflow_failed",
@@ -1935,6 +1956,7 @@ const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
 ### Client Messages
 
 #### Ping/Pong (Keepalive)
+
 ```json
 // Send
 {"type": "ping"}
@@ -1944,143 +1966,146 @@ const ws = new WebSocket('ws://127.0.0.1:5051/chat/{chat_id}');
 ```
 
 #### Change Subscription
-```json
-{"type": "subscribe", "chat_id": "new-chat-id"}
-```
 
-✅ **Recent Fix**: WebSocket auto-starts with Flask, thread-safe bridge implemented
+```json
+{ "type": "subscribe", "chat_id": "new-chat-id" }
+```
 
 ---
 
-
-For detailed WebSocket documentation, see [WEBSOCKET_USAGE.md](WEBSOCKET_USAGE.md)
+For detailed WebSocket documentation, see [WEBSOCKET_USAGE.md](./docs/WEBSOCKET_USAGE.md)
 
 ---
 
 ## 💻 Frontend Integration Guide
 
-
-
 ### Quick Start
 
 #### 1. Create Conversation
+
 ```javascript
-const response = await fetch('http://localhost:5050/api/v1/chat/workflows', {
-  method: 'POST'
+const response = await fetch("http://localhost:5050/api/v1/chat/workflows", {
+  method: "POST",
 });
 const { data } = await response.json();
 const chatId = data.chat_id;
 ```
 
 #### 2. Connect to WebSocket
+
 ```javascript
 const ws = new WebSocket(`ws://127.0.0.1:5051/chat/${chatId}`);
 
 ws.onmessage = (event) => {
   const message = JSON.parse(event.data);
-  
-  switch(message.type) {
-    case 'workflow_started':
-      console.log('Workflow started');
+
+  switch (message.type) {
+    case "workflow_started":
+      console.log("Workflow started");
       break;
-    case 'progress':
+    case "progress":
       updateProgressBar(message.progress);
       break;
-    case 'workflow_completed':
-      console.log('Workflow completed');
+    case "workflow_completed":
+      console.log("Workflow completed");
       break;
-    case 'workflow_failed':
-      console.error('Workflow failed:', message.error);
+    case "workflow_failed":
+      console.error("Workflow failed:", message.error);
       break;
   }
 };
 ```
 
 #### 3. Upload File
+
 ```javascript
 const formData = new FormData();
-formData.append('file', file);
+formData.append("file", file);
 
 const response = await fetch(
   `http://localhost:5050/api/v1/chat/workflows/${chatId}/upload`,
   {
-    method: 'POST',
-    body: formData
-  }
+    method: "POST",
+    body: formData,
+  },
 );
 const { data } = await response.json();
 // Use data.download_url for downloads
 ```
 
 #### 4. Execute Workflow
+
 ```javascript
 const response = await fetch(
   `http://localhost:5050/api/v1/chat/workflows/${chatId}/execute`,
   {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       steps: [
         {
-          operation: 'excel/extract-columns-to-file',
+          operation: "excel/extract-columns-to-file",
           arguments: {
-            columns: ['customer_id'],
-            remove_duplicates: true
-          }
-        }
-      ]
-    })
-  }
+            columns: ["customer_id"],
+            remove_duplicates: true,
+          },
+        },
+      ],
+    }),
+  },
 );
 ```
 
 #### 5. Download Results
+
 ```javascript
 // Download URLs are absolute and ready to use
 const downloadUrl = data.results[0].download_url;
 window.open(downloadUrl);
 
 // Or use in anchor tag
-<a href={downloadUrl} download>Download</a>
+<a href={downloadUrl} download>
+  Download
+</a>;
 ```
 
 ### React Component Example
 
 ```jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 function ChatWorkflow({ chatId }) {
   const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState('idle');
-  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState("idle");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const ws = new WebSocket(`ws://127.0.0.1:5051/chat/${chatId}`);
-    
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
-      switch(data.type) {
-        case 'workflow_started':
-          setStatus('running');
-          setMessage('Workflow started');
+
+      switch (data.type) {
+        case "workflow_started":
+          setStatus("running");
+          setMessage("Workflow started");
           break;
-        case 'progress':
+        case "progress":
           setProgress(data.progress);
           setMessage(data.message);
           break;
-        case 'workflow_completed':
-          setStatus('completed');
+        case "workflow_completed":
+          setStatus("completed");
           setProgress(100);
-          setMessage('Completed successfully');
+          setMessage("Completed successfully");
           break;
-        case 'workflow_failed':
-          setStatus('failed');
+        case "workflow_failed":
+          setStatus("failed");
           setMessage(data.error);
           break;
       }
     };
-    
+
     return () => ws.close();
   }, [chatId]);
 
@@ -2104,7 +2129,6 @@ function ChatWorkflow({ chatId }) {
 5. **Message Validation**: Validate message structure before use
 
 ---
-
 
 ---
 
@@ -2143,7 +2167,6 @@ class UppercaseStrategy(NormalizationStrategy):
         return series.astype(str).str.upper()
 ```
 
-
 ## 🧪 Testing
 
 Run the test suite:
@@ -2157,7 +2180,6 @@ Run tests with coverage:
 ```bash
 make test-cov
 ```
-
 
 ## 📝 Available Normalization Types
 
@@ -2184,148 +2206,6 @@ make test-cov
 | `fill_null_values`     | Fill null values                   |
 | `outlier_removal`      | Remove outliers                    |
 
-
----
-
-## 🔧 Recent Improvements
-
-### Recent Fixes (All Production-Ready ✅)
-
-### Recent Fixes (All Production-Ready ✅)
-
-#### 1. WebSocket Integration
-- **Issue**: WebSocket server not activated on startup
-- **Fix**: Auto-starts with Flask, thread-safe bridge implemented
-- **Status**: ✅ Fixed in commit 98f71b7
-
-#### 2. File Upload Persistence
-- **Issue**: Uploaded files not saved to database (CASCADE DELETE issue)
-- **Fix**: Changed `INSERT OR REPLACE` to `INSERT ... ON CONFLICT DO UPDATE`
-- **Status**: ✅ Fixed in commit 63afd56
-
-#### 3. Workflow Executor Parameters
-- **Issue**: Passing file paths instead of DataFrames to service methods
-- **Fix**: Read files into DataFrames before passing to services
-- **Status**: ✅ Fixed in commit 9aa3d34
-
-#### 4. Download URLs
-- **Issue**: Relative URLs that couldn't be clicked directly
-- **Fix**: Changed to absolute URLs with scheme and host
-- **Status**: ✅ Fixed in commit 1966b30
-
-#### 5. Download Endpoint Storage Parameter
-- **Issue**: Missing storage parameter causing downloads to fail
-- **Fix**: Added ConversationStorage parameter to repository initialization
-- **Status**: ✅ Fixed in commit 10c6ab0
-
-#### 6. Restore Partition Path
-- **Issue**: Files restored to flat directory instead of partitioned structure
-- **Fix**: Extract to temp, read partition_key, move to correct path
-- **Status**: ✅ Fixed in commit 95f37c7
-
-#### 7. Dump File Download Path
-- **Issue**: Path join creating invalid paths causing download failures
-- **Fix**: Use `os.path.abspath()` for consistent path resolution
-- **Status**: ✅ Fixed in commit 95f37c7
-
----
-
-
----
-
-## 🔍 Troubleshooting
-
-
-
-### Common Issues
-
-#### Issue: WebSocket Not Connecting
-
-**Symptoms**: `Connection refused` or `404 Not Found`
-
-**Solutions**:
-1. Verify WebSocket is running:
-   ```bash
-   netstat -tuln | grep 5051
-   ```
-2. Check configuration:
-   ```yaml
-   chat_workflows:
-     enabled: true
-   ```
-3. Restart application
-
-#### Issue: File Download 404
-
-**Symptoms**: `File not found` error when downloading
-
-**Solutions**:
-1. Verify file exists:
-   ```bash
-   ls -la automation/workflows/{partition_key}/{chat_id}/
-   ```
-2. Check download URL format (must be absolute)
-3. Verify partition_key is correct in database
-
-#### Issue: Restore to Wrong Location
-
-**Symptoms**: Files not in partitioned directories after restore
-
-**Solutions**:
-1. Verify using latest version (fix applied in commit 95f37c7)
-2. Check metadata.json in dump file contains partition_key
-3. Manual fix:
-   ```bash
-   mv automation/workflows/{chat_id} automation/workflows/{partition_key}/
-   ```
-
-#### Issue: Workflow Execution Fails
-
-**Symptoms**: `'str' object has no attribute 'columns'`
-
-**Solutions**:
-1. Verify using latest version (fix applied in commit 9aa3d34)
-2. Check uploaded file is valid Excel/CSV
-3. Verify operation parameters are correct
-
-#### Issue: Database Locked
-
-**Symptoms**: `database is locked` error
-
-**Solutions**:
-1. Close all other connections
-2. Restart application
-3. Check for stale lock files:
-   ```bash
-   rm automation/sqlite/chat.db-journal
-   ```
-
-### Debug Mode
-
-Enable detailed logging in `configs/application.yml`:
-
-```yaml
-debug: true
-log_level: "DEBUG"
-```
-
-### Logs
-
-Check application logs:
-```bash
-tail -f logs/app.log
-```
-
-### Support
-
-For additional help:
-- Check documentation: This README
-- Review test files: `tests/integration/chat_workflows/`
-- Examine code: `app/chat/` directory
-
----
-
-
 ---
 
 ## 🤝 Contributing
@@ -2336,16 +2216,10 @@ For additional help:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-Made with ❤️ using Flask and Python
----
-
-**Last Updated**: 2026-02-07
-**Version**: v0.0.1
-**Status**: Production Ready ✅
+## Made with ❤️ using Flask and Python

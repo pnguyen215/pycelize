@@ -26,8 +26,7 @@ from app import create_app
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ logger = logging.getLogger(__name__)
 def start_websocket_server(config):
     """
     Start the WebSocket server in a separate thread.
-    
+
     Args:
         config: Application configuration
     """
@@ -45,39 +44,40 @@ def start_websocket_server(config):
         if not chat_config or not chat_config.get("enabled", False):
             logger.info("Chat workflows disabled - WebSocket server not started")
             return
-        
+
         # Get WebSocket configuration
         ws_config = chat_config.get("websocket", {})
         host = ws_config.get("host", "127.0.0.1")
         port = ws_config.get("port", 5051)
         max_connections = chat_config.get("max_connections", 10)
-        
+
         # Import WebSocket server and bridge
         from app.chat.websocket_server import ChatWebSocketServer
         from app.chat.websocket_bridge import websocket_bridge
-        
+
         # Create and start WebSocket server
         logger.info(f"Starting WebSocket server on ws://{host}:{port}")
         ws_server = ChatWebSocketServer(host, port, max_connections)
-        
+
         # Create new event loop for this thread
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
+
         # Register connection manager with bridge for cross-thread communication
         websocket_bridge.set_connection_manager(ws_server.connection_manager, loop)
         logger.info("WebSocket bridge configured for cross-thread communication")
-        
+
         # Start the WebSocket server
         loop.run_until_complete(ws_server.start())
-        logger.info(f"✓ WebSocket server started successfully on ws://{host}:{port}")
-        
+        logger.info(f"WebSocket server started successfully on ws://{host}:{port}")
+
         # Keep the loop running
         loop.run_forever()
-        
+
     except Exception as e:
         logger.error(f"Failed to start WebSocket server: {e}")
         import traceback
+
         traceback.print_exc()
 
 
@@ -102,30 +102,37 @@ def main():
     version = config.get("app.version", "v0.0.1") if config else "v0.0.1"
     server = f"http://{host}:{port}".format(host=host, port=port)
     health_url = f"{server}/api/v1/health".format(host=host, port=port)
-    
+
     # Check if WebSocket should be started
     chat_config = config.get_section("chat_workflows") if config else None
     ws_enabled = chat_config.get("enabled", False) if chat_config else False
-    ws_host = chat_config.get("websocket", {}).get("host", "127.0.0.1") if chat_config else "127.0.0.1"
-    ws_port = chat_config.get("websocket", {}).get("port", 5051) if chat_config else 5051
+    ws_host = (
+        chat_config.get("websocket", {}).get("host", "127.0.0.1")
+        if chat_config
+        else "127.0.0.1"
+    )
+    ws_port = (
+        chat_config.get("websocket", {}).get("port", 5051) if chat_config else 5051
+    )
     ws_url = f"ws://{ws_host}:{ws_port}"
 
     # Start WebSocket server in separate thread if enabled
     if ws_enabled:
         logger.info("Starting WebSocket server in background thread...")
         ws_thread = threading.Thread(
-            target=start_websocket_server, 
+            target=start_websocket_server,
             args=(config,),
             daemon=True,
-            name="WebSocketServer"
+            name="WebSocketServer",
         )
         ws_thread.start()
         # Give WebSocket server time to start
         import time
+
         time.sleep(2)
 
     # Print startup banner
-    ws_status = f"✓ Running on {ws_url}" if ws_enabled else "✗ Disabled"
+    ws_status = f"{ws_url}" if ws_enabled else "Disabled"
     print(
         f"""
     ╔═══════════════════════════════════════════════════════════════════╗
@@ -133,15 +140,17 @@ def main():
     ║   🚀 Pycelize - Excel/CSV Processing API                          ║
     ║                                                                   ║
     ║   Version:    {version}                                              ║
-    ║   REST API:   {server}                                  ║
-    ║   WebSocket:  {ws_status}                            ║
+    ║   REST API:   {server}                               ║
     ║   Debug:      {debug}                                                ║
     ║                                                                   ║
-    ║   Health:     {health_url}                   ║
+    ║   Health:     {health_url}                 ║
     ║                                                                   ║
     ╚═══════════════════════════════════════════════════════════════════╝
     """
     )
+
+    if ws_enabled:
+        logger.info(f"Websocket server running at {ws_url}")
 
     # Run the Flask application
     try:
