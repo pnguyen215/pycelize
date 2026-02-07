@@ -568,15 +568,21 @@ def download_file(filename: str):
         chat_config = config.get_section("chat_workflows")
         dump_path = chat_config.get("storage", {}).get("dumps_path", "./automation/dumps")
 
+        # Resolve to absolute path to handle relative paths correctly
+        dump_path = os.path.abspath(dump_path)
         file_path = os.path.join(dump_path, secure_filename(filename))
+        
+        logger.info(f"Attempting to download file: {file_path}")
 
         if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
             response = ResponseBuilder.error("File not found", 404)
             return jsonify(response), 404
 
         return send_file(file_path, as_attachment=True, download_name=filename)
 
     except Exception as e:
+        logger.error(f"Failed to download file: {str(e)}")
         response = ResponseBuilder.error(f"Failed to download file: {str(e)}", 500)
         return jsonify(response), 500
 

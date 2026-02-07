@@ -236,6 +236,9 @@ class ConversationStorage:
             Path to created dump file
         """
         conv_path = self.get_conversation_path(chat_id, partition_key)
+        
+        # Ensure dump directory exists (resolve to absolute path)
+        dump_path = os.path.abspath(dump_path)
         os.makedirs(dump_path, exist_ok=True)
 
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -259,36 +262,56 @@ class ConversationStorage:
             target_chat_id: Optional new chat ID (defaults to original)
 
         Returns:
-            Tuple of (chat_id, conversation_path)
+            Tuple of (chat_id, partition_key)
         """
-        # Extract archive to temporary location
-        with tarfile.open(dump_file_path, "r:gz") as tar:
-            # Get original chat_id from archive
-            members = tar.getmembers()
-            if not members:
-                raise ValueError("Empty archive")
+        import tempfile
+        
+        # Extract archive to temporary location first
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with tarfile.open(dump_file_path, "r:gz") as tar:
+                # Get original chat_id from archive
+                members = tar.getmembers()
+                if not members:
+                    raise ValueError("Empty archive")
 
-            original_chat_id = members[0].name.split("/")[0]
-            chat_id = target_chat_id or original_chat_id
+                original_chat_id = members[0].name.split("/")[0]
+                chat_id = target_chat_id or original_chat_id
 
-            # Extract to base path
-            tar.extractall(path=self.base_path)
-
-            # If new chat_id specified, rename directory
-            if target_chat_id and target_chat_id != original_chat_id:
-                old_path = os.path.join(self.base_path, original_chat_id)
-                new_path = os.path.join(self.base_path, target_chat_id)
-                shutil.move(old_path, new_path)
-                conv_path = new_path
-            else:
-                conv_path = os.path.join(self.base_path, original_chat_id)
-
-        # Read partition key from metadata
-        metadata_path = os.path.join(conv_path, "metadata.json")
-        partition_key = ""
-        if os.path.exists(metadata_path):
-            with open(metadata_path, "r") as f:
-                metadata = json.load(f)
-                partition_key = metadata.get("partition_key", "")
+                # Extract to temporary directory
+                tar.extractall(path=temp_dir)
+                
+                # Read metadata to get partition_key
+                temp_conv_path = os.path.join(temp_dir, original_chat_id)
+                metadata_path = os.path.join(temp_conv_path, "metadata.json")
+                partition_key = ""
+                
+                if os.path.exists(metadata_path):
+                    with open(metadata_path, "r") as f:
+                        metadata = json.load(f)
+                        partition_key = metadata.get("partition_key", "")
+                
+                # If no partition_key in metadata, generate one
+                if not partition_key:
+                    # Use current time for partition key
+                    partition_key = datetime.utcnow().strftime("%Y/%m")
+                
+                # Create target directory with correct partition structure
+                target_partition_path = os.path.join(self.base_path, partition_key, chat_id)
+                os.makedirs(os.path.dirname(target_partition_path), exist_ok=True)
+                
+                # If target already exists, remove it
+                if os.path.exists(target_partition_path):
+                    shutil.rmtree(target_partition_path)
+                
+                # Move from temp to correct partition location
+                shutil.move(temp_conv_path, target_partition_path)
+                
+                # If new chat_id specified, update directory name
+                if target_chat_id and target_chat_id != original_chat_id:
+                    new_target_path = os.path.join(self.base_path, partition_key, target_chat_id)
+                    if os.path.exists(new_target_path):
+                        shutil.rmtree(new_target_path)
+                    shutil.move(target_partition_path, new_target_path)
+                    target_partition_path = new_target_path
 
         return chat_id, partition_key
