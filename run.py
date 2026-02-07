@@ -149,9 +149,6 @@ def main():
     """
     )
 
-    if ws_enabled:
-        logger.info(f"Websocket server running at {ws_url}")
-
     # Run the Flask application
     try:
         app.run(host=host, port=port, debug=debug, use_reloader=False)
