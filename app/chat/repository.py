@@ -175,13 +175,45 @@ class ConversationRepository:
             metadata=metadata or {},
         )
 
-        # Get conversation and add message
-        conversation = self.get_conversation(chat_id)
-        if conversation:
-            conversation.messages.append(message)
-            self.update_conversation(conversation)
+        # Save message to database
+        message_dict = {
+            "message_id": message.message_id,
+            "chat_id": chat_id,
+            "message_type": message.message_type.value,
+            "content": message.content,
+            "metadata": message.metadata,
+            "created_at": message.created_at.isoformat(),
+        }
+        self.database.save_message(message_dict)
 
         return message
+
+    def get_messages(
+        self, chat_id: str, limit: int = 100, offset: int = 0
+    ) -> List[Message]:
+        """
+        Get messages for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+            limit: Maximum number of results
+            offset: Pagination offset
+
+        Returns:
+            List of Message objects
+        """
+        message_dicts = self.database.get_messages(chat_id, limit, offset)
+        messages = []
+        for msg_dict in message_dicts:
+            message = Message(
+                message_id=msg_dict["message_id"],
+                message_type=MessageType(msg_dict["message_type"]),
+                content=msg_dict["content"],
+                metadata=msg_dict.get("metadata", {}),
+                created_at=datetime.fromisoformat(msg_dict["created_at"]),
+            )
+            messages.append(message)
+        return messages
 
     def add_workflow_step(
         self, chat_id: str, operation: str, arguments: Dict[str, Any]

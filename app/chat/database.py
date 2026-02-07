@@ -366,6 +366,164 @@ class ChatDatabase:
         finally:
             conn.close()
 
+    def save_message(self, message: Dict[str, Any]) -> None:
+        """
+        Save a message to database.
+
+        Args:
+            message: Message dictionary
+        """
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO messages
+                (message_id, chat_id, message_type, content, metadata, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    message["message_id"],
+                    message["chat_id"],
+                    message["message_type"],
+                    message["content"],
+                    json.dumps(message.get("metadata", {})),
+                    message["created_at"],
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_messages(
+        self, chat_id: str, limit: int = 100, offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve messages for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+            limit: Maximum number of results
+            offset: Pagination offset
+
+        Returns:
+            List of message dictionaries
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """
+                SELECT * FROM messages
+                WHERE chat_id = ?
+                ORDER BY created_at ASC
+                LIMIT ? OFFSET ?
+                """,
+                (chat_id, limit, offset),
+            )
+
+            messages = []
+            for row in cursor.fetchall():
+                messages.append(
+                    {
+                        "message_id": row["message_id"],
+                        "chat_id": row["chat_id"],
+                        "message_type": row["message_type"],
+                        "content": row["content"],
+                        "metadata": json.loads(row["metadata"])
+                        if row["metadata"]
+                        else {},
+                        "created_at": row["created_at"],
+                    }
+                )
+            return messages
+        finally:
+            conn.close()
+
+    def save_workflow_step(self, step: Dict[str, Any]) -> None:
+        """
+        Save or update a workflow step.
+
+        Args:
+            step: Workflow step dictionary
+        """
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO workflow_steps
+                (step_id, chat_id, operation, arguments, input_file, output_file,
+                 status, progress, error_message, started_at, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(step_id) DO UPDATE SET
+                    status = excluded.status,
+                    progress = excluded.progress,
+                    input_file = excluded.input_file,
+                    output_file = excluded.output_file,
+                    error_message = excluded.error_message,
+                    started_at = excluded.started_at,
+                    completed_at = excluded.completed_at
+                """,
+                (
+                    step["step_id"],
+                    step["chat_id"],
+                    step["operation"],
+                    json.dumps(step.get("arguments", {})),
+                    step.get("input_file"),
+                    step.get("output_file"),
+                    step["status"],
+                    step.get("progress", 0),
+                    step.get("error_message"),
+                    step.get("started_at"),
+                    step.get("completed_at"),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_workflow_steps(self, chat_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieve workflow steps for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+
+        Returns:
+            List of workflow step dictionaries
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """
+                SELECT * FROM workflow_steps
+                WHERE chat_id = ?
+                ORDER BY started_at ASC
+                """,
+                (chat_id,),
+            )
+
+            steps = []
+            for row in cursor.fetchall():
+                steps.append(
+                    {
+                        "step_id": row["step_id"],
+                        "chat_id": row["chat_id"],
+                        "operation": row["operation"],
+                        "arguments": json.loads(row["arguments"])
+                        if row["arguments"]
+                        else {},
+                        "input_file": row["input_file"],
+                        "output_file": row["output_file"],
+                        "status": row["status"],
+                        "progress": row["progress"],
+                        "error_message": row["error_message"],
+                        "started_at": row["started_at"],
+                        "completed_at": row["completed_at"],
+                    }
+                )
+            return steps
+        finally:
+            conn.close()
+
     def get_stats(self) -> Dict[str, int]:
         """
         Get database statistics.

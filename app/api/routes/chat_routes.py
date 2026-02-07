@@ -17,6 +17,7 @@ from app.chat.database import ChatDatabase
 from app.chat.storage import ConversationStorage
 from app.chat.repository import ConversationRepository
 from app.chat.workflow_executor import WorkflowExecutor
+from app.chat.message_service import MessageService
 from app.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,9 @@ def get_chat_components():
     storage = ConversationStorage(workflows_path, partition_strategy)
     repository = ConversationRepository(database, storage)
     executor = WorkflowExecutor(config)
+    message_service = MessageService(repository)
 
-    return repository, executor, storage, chat_config
+    return repository, executor, storage, message_service, chat_config
 
 
 @chat_bp.route("/workflows", methods=["POST"])
@@ -53,13 +55,25 @@ def create_conversation():
         JSON response with conversation details
     """
     try:
-        repository, _, _, _ = get_chat_components()
+        repository, _, _, _, _ = get_chat_components()
 
         # Generate chat ID
         chat_id = str(uuid.uuid4())
 
         # Create conversation
         conversation = repository.create_conversation(chat_id)
+        
+        # Add initial system message
+        repository.add_message(
+            chat_id=chat_id,
+            message_type=MessageType.SYSTEM,
+            content=(
+                f"Welcome! I'm your automation assistant. "
+                f"You can upload files and I'll help you process them with various operations. "
+                f"Upload a file to get started!"
+            ),
+            metadata={"response_type": "welcome"}
+        )
 
         # Build response
         response = ResponseBuilder.success(
@@ -91,7 +105,7 @@ def list_conversations():
         JSON response with list of conversations
     """
     try:
-        repository, _, _, _ = get_chat_components()
+        repository, _, _, _, _ = get_chat_components()
 
         # Get query parameters
         status = request.args.get("status")
@@ -129,7 +143,7 @@ def get_conversation(chat_id: str):
         JSON response with conversation details
     """
     try:
-        repository, _, _, _ = get_chat_components()
+        repository, _, _, _, _ = get_chat_components()
 
         # Get conversation
         conversation = repository.get_conversation(chat_id)
@@ -154,6 +168,172 @@ def get_conversation(chat_id: str):
         return jsonify(response), 500
 
 
+@chat_bp.route("/workflows/<chat_id>/messages", methods=["GET"])
+def get_messages(chat_id: str):
+    """
+    Get messages for a conversation (Telegram-style message history).
+
+    Args:
+        chat_id: Conversation identifier
+
+    Query Parameters:
+        limit: Maximum number of messages (default: 100)
+        offset: Pagination offset (default: 0)
+
+    Returns:
+        JSON response with message list
+    """
+    try:
+        repository, _, _, _, _ = get_chat_components()
+
+        # Get conversation to verify it exists
+        conversation = repository.get_conversation(chat_id)
+        if not conversation:
+            response = ResponseBuilder.error("Conversation not found", 404)
+            return jsonify(response), 404
+
+        # Get query parameters
+        limit = int(request.args.get("limit", 100))
+        offset = int(request.args.get("offset", 0))
+
+        # Get messages
+        messages = repository.get_messages(chat_id, limit, offset)
+
+        # Convert to dict format with sender_type mapping
+        message_dicts = []
+        for msg in messages:
+            msg_dict = msg.to_dict()
+            # Map message_type to sender_type for Telegram-style display
+            if msg.message_type in [MessageType.USER]:
+                msg_dict["sender_type"] = "user"
+            else:
+                msg_dict["sender_type"] = "system"
+            message_dicts.append(msg_dict)
+
+        # Build response
+        response = ResponseBuilder.success(
+            data={
+                "messages": message_dicts,
+                "count": len(message_dicts),
+                "chat_id": chat_id
+            },
+            message="Messages retrieved successfully"
+        )
+
+        return jsonify(response), 200
+
+    except ValidationError as e:
+        response = ResponseBuilder.error(str(e), 422)
+        return jsonify(response), 422
+    except Exception as e:
+        response = ResponseBuilder.error(f"Failed to get messages: {str(e)}", 500)
+        return jsonify(response), 500
+
+
+@chat_bp.route("/workflows/<chat_id>/messages", methods=["POST"])
+def send_message(chat_id: str):
+    """
+    Send a user message to the conversation and get system response.
+
+    Args:
+        chat_id: Conversation identifier
+
+    Request JSON:
+        {
+            "content": "Extract customer_id column"
+        }
+
+    Returns:
+        JSON response with user message, system response, and suggested operations
+    """
+    try:
+        repository, _, _, message_service, _ = get_chat_components()
+
+        # Get conversation to verify it exists
+        conversation = repository.get_conversation(chat_id)
+        if not conversation:
+            response = ResponseBuilder.error("Conversation not found", 404)
+            return jsonify(response), 404
+
+        # Get request data
+        data = request.get_json()
+        if not data or "content" not in data:
+            raise ValidationError("Message content is required")
+
+        content = data["content"]
+        metadata = data.get("metadata", {})
+
+        # Process user message and get system response
+        result = message_service.process_user_message(chat_id, content, metadata)
+
+        # Import WebSocket bridge to send real-time updates
+        from app.chat.websocket_bridge import websocket_bridge
+
+        # Send user message via WebSocket
+        websocket_bridge.send_message(chat_id, {
+            "type": "message",
+            "chat_id": chat_id,
+            "sender_type": "user",
+            "message_type": "text",
+            "content": content,
+            "message_id": result["user_message"]["message_id"],
+            "created_at": result["user_message"]["created_at"]
+        })
+
+        # Send system response via WebSocket
+        websocket_bridge.send_message(chat_id, {
+            "type": "message",
+            "chat_id": chat_id,
+            "sender_type": "system",
+            "message_type": "workflow",
+            "content": result["system_message"]["content"],
+            "message_id": result["system_message"]["message_id"],
+            "created_at": result["system_message"]["created_at"],
+            "metadata": result["system_message"]["metadata"]
+        })
+
+        # Build response
+        response = ResponseBuilder.success(
+            data=result,
+            message="Message processed successfully"
+        )
+
+        return jsonify(response), 200
+
+    except ValidationError as e:
+        response = ResponseBuilder.error(str(e), 422)
+        return jsonify(response), 422
+    except Exception as e:
+        response = ResponseBuilder.error(f"Failed to send message: {str(e)}", 500)
+        return jsonify(response), 500
+
+
+@chat_bp.route("/workflow/operations", methods=["GET"])
+def get_operations():
+    """
+    Get list of available workflow operations.
+
+    Returns:
+        JSON response with operations list
+    """
+    try:
+        from app.chat.message_service import MessageService
+
+        operations = MessageService.get_available_operations()
+
+        # Build response
+        response = ResponseBuilder.success(
+            data={"operations": operations, "count": len(operations)},
+            message="Operations retrieved successfully"
+        )
+
+        return jsonify(response), 200
+
+    except Exception as e:
+        response = ResponseBuilder.error(f"Failed to get operations: {str(e)}", 500)
+        return jsonify(response), 500
+
+
 @chat_bp.route("/workflows/<chat_id>/upload", methods=["POST"])
 def upload_file(chat_id: str):
     """
@@ -169,7 +349,7 @@ def upload_file(chat_id: str):
         JSON response with file path and download link
     """
     try:
-        repository, _, storage, chat_config = get_chat_components()
+        repository, _, storage, message_service, chat_config = get_chat_components()
 
         # Get conversation
         conversation = repository.get_conversation(chat_id)
@@ -197,24 +377,51 @@ def upload_file(chat_id: str):
         # Save file metadata to database
         repository.database.save_file(chat_id, file_path, "uploaded")
 
-        # Add message
+        # Add file upload message
         repository.add_message(
             chat_id,
             MessageType.FILE_UPLOAD,
             f"File uploaded: {filename}",
-            {"file_path": file_path},
+            {"file_path": file_path, "filename": filename},
         )
 
+        # Get intelligent system response with operation suggestions
+        system_response = message_service.handle_file_upload(chat_id, filename, file_path)
+
         # Build absolute download URL
-        # Extract just the filename for the download endpoint
         download_url = f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}"
+
+        # Import WebSocket bridge to send real-time updates
+        from app.chat.websocket_bridge import websocket_bridge
+
+        # Send file upload notification via WebSocket
+        websocket_bridge.send_message(chat_id, {
+            "type": "message",
+            "chat_id": chat_id,
+            "sender_type": "user",
+            "message_type": "file",
+            "content": f"File uploaded: {filename}",
+            "filename": filename,
+            "download_url": download_url
+        })
+
+        # Send system response via WebSocket
+        websocket_bridge.send_message(chat_id, {
+            "type": "message",
+            "chat_id": chat_id,
+            "sender_type": "system",
+            "message_type": "workflow",
+            "content": system_response["system_message"]["content"],
+            "metadata": system_response["system_message"]["metadata"]
+        })
 
         # Build response
         response = ResponseBuilder.success(
             data={
-                "file_path": file_path, 
+                "file_path": file_path,
                 "filename": filename,
-                "download_url": download_url
+                "download_url": download_url,
+                "system_response": system_response
             },
             message="File uploaded successfully"
         )
@@ -251,7 +458,7 @@ def execute_workflow(chat_id: str):
         JSON response with execution results
     """
     try:
-        repository, executor, storage, _ = get_chat_components()
+        repository, executor, storage, _, _ = get_chat_components()
 
         # Get conversation
         conversation = repository.get_conversation(chat_id)
@@ -403,7 +610,7 @@ def delete_conversation(chat_id: str):
         JSON response confirming deletion
     """
     try:
-        repository, _, _, _ = get_chat_components()
+        repository, _, _, _, _ = get_chat_components()
 
         # Delete conversation
         deleted = repository.delete_conversation(chat_id)
@@ -440,7 +647,7 @@ def dump_conversation(chat_id: str):
         JSON response with download link
     """
     try:
-        repository, _, _, chat_config = get_chat_components()
+        repository, _, _, _, chat_config = get_chat_components()
 
         # Get dump path
         dump_path = chat_config.get("storage", {}).get("dumps_path", "./automation/dumps")
@@ -479,7 +686,7 @@ def restore_conversation():
         JSON response with restored conversation details
     """
     try:
-        repository, _, _, chat_config = get_chat_components()
+        repository, _, _, _, chat_config = get_chat_components()
 
         # Check file
         if "dump_file" not in request.files:
