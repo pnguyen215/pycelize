@@ -139,9 +139,9 @@ chat_workflows:
   # Backup configuration
   backup:
     enabled: true
-    interval_minutes: 60
-    snapshot_path: "./automation/sqlite/snapshots"
-    retention_days: 30
+    interval_minutes: 60 # Interval to check for backups
+    snapshot_path: "./automation/sqlite/snapshots" # Path to store snapshots
+    retention_days: 30 # Days to retain snapshots
 
   # Conversation partitioning
   partition:
