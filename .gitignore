@@ -173,6 +173,7 @@ test_data/
 
 # Chat Workflows - automation directories
 automation/workflows/
+automation/workflows_test/
 automation/dumps/
 automation/sqlite/*.db
 automation/sqlite/snapshots/
