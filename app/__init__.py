@@ -109,6 +109,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.api.routes.file_routes import file_bp
     from app.api.routes.json_routes import json_bp
     from app.api.routes.chat_routes import chat_bp
+    from app.api.routes.chatbot_routes import chatbot_bp
 
     # Get API prefix from config
     config = app.config.get("PYCELIZE")
@@ -123,3 +124,4 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(file_bp, url_prefix=f"{api_prefix}/files")
     app.register_blueprint(json_bp, url_prefix=f"{api_prefix}/json")
     app.register_blueprint(chat_bp, url_prefix=f"{api_prefix}/chat")
+    app.register_blueprint(chatbot_bp, url_prefix=f"{api_prefix}/chat")
