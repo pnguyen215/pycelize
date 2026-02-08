@@ -68,9 +68,7 @@ class ConversationRepository:
         )
 
         # Create storage directory
-        conv_path, partition_key = self.storage.create_conversation_directory(
-            chat_id, created_at
-        )
+        conv_path, partition_key = self.storage.create_conversation_directory(chat_id, created_at)
         conversation.partition_key = partition_key
 
         # Save to database
@@ -175,11 +173,15 @@ class ConversationRepository:
             metadata=metadata or {},
         )
 
-        # Get conversation and add message
-        conversation = self.get_conversation(chat_id)
-        if conversation:
-            conversation.messages.append(message)
-            self.update_conversation(conversation)
+        # Save message to database
+        self.database.save_message(
+            chat_id,
+            message.message_id,
+            message.message_type.value,
+            message.content,
+            message.metadata,
+            message.created_at.isoformat(),
+        )
 
         return message
 
@@ -199,21 +201,26 @@ class ConversationRepository:
         """
         import uuid
 
-        step = WorkflowStep(
-            step_id=str(uuid.uuid4()), operation=operation, arguments=arguments
-        )
+        step = WorkflowStep(step_id=str(uuid.uuid4()), operation=operation, arguments=arguments)
 
-        # Get conversation and add step
-        conversation = self.get_conversation(chat_id)
-        if conversation:
-            conversation.workflow_steps.append(step)
-            self.update_conversation(conversation)
+        # Save workflow step to database
+        self.database.save_workflow_step(
+            chat_id,
+            step.step_id,
+            step.operation,
+            step.arguments,
+            step.status.value,
+            step.input_file,
+            step.output_file,
+            step.progress,
+            step.error_message,
+            step.started_at.isoformat() if step.started_at else None,
+            step.completed_at.isoformat() if step.completed_at else None,
+        )
 
         return step
 
-    def dump_conversation(
-        self, chat_id: str, dump_path: str, compression: str = "gzip"
-    ) -> str:
+    def dump_conversation(self, chat_id: str, dump_path: str, compression: str = "gzip") -> str:
         """
         Create a dump of conversation data.
 
@@ -255,9 +262,7 @@ class ConversationRepository:
             Restored Conversation object
         """
         # Restore files
-        chat_id, partition_key = self.storage.restore_conversation(
-            dump_file_path, new_chat_id
-        )
+        chat_id, partition_key = self.storage.restore_conversation(dump_file_path, new_chat_id)
 
         # Load metadata
         metadata_file = dump_file_path.replace(".tar.gz", "_metadata.json")
@@ -292,6 +297,47 @@ class ConversationRepository:
         # Get files from database
         files = self.database.get_files(conv_dict["chat_id"])
 
+        # Get messages from database
+        messages_data = self.database.get_messages(conv_dict["chat_id"])
+        messages = []
+        for msg_data in messages_data:
+            messages.append(
+                Message(
+                    message_id=msg_data["message_id"],
+                    message_type=MessageType(msg_data["message_type"]),
+                    content=msg_data["content"],
+                    metadata=msg_data["metadata"],
+                    created_at=datetime.fromisoformat(msg_data["created_at"]),
+                )
+            )
+
+        # Get workflow steps from database
+        steps_data = self.database.get_workflow_steps(conv_dict["chat_id"])
+        workflow_steps = []
+        for step_data in steps_data:
+            workflow_steps.append(
+                WorkflowStep(
+                    step_id=step_data["step_id"],
+                    operation=step_data["operation"],
+                    arguments=step_data["arguments"],
+                    input_file=step_data["input_file"],
+                    output_file=step_data["output_file"],
+                    status=StepStatus(step_data["status"]),
+                    progress=step_data["progress"],
+                    error_message=step_data["error_message"],
+                    started_at=(
+                        datetime.fromisoformat(step_data["started_at"])
+                        if step_data["started_at"]
+                        else None
+                    ),
+                    completed_at=(
+                        datetime.fromisoformat(step_data["completed_at"])
+                        if step_data["completed_at"]
+                        else None
+                    ),
+                )
+            )
+
         # Create conversation
         conversation = Conversation(
             chat_id=conv_dict["chat_id"],
@@ -299,6 +345,8 @@ class ConversationRepository:
             status=ConversationStatus(conv_dict["status"]),
             uploaded_files=files.get("uploaded", []),
             output_files=files.get("output", []),
+            messages=messages,
+            workflow_steps=workflow_steps,
             metadata=conv_dict.get("metadata", {}),
             created_at=created_at,
             updated_at=updated_at,

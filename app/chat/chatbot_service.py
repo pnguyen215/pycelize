@@ -370,9 +370,20 @@ class ChatBotService:
                 arguments=step_data.get("arguments", {}),
             )
             steps.append(step)
-            conversation.workflow_steps.append(step)
-
-        self.repository.update_conversation(conversation)
+            # Save workflow step to database
+            self.repository.database.save_workflow_step(
+                chat_id,
+                step.step_id,
+                step.operation,
+                step.arguments,
+                step.status.value,
+                step.input_file,
+                step.output_file,
+                step.progress,
+                step.error_message,
+                step.started_at.isoformat() if step.started_at else None,
+                step.completed_at.isoformat() if step.completed_at else None,
+            )
 
         # Import WebSocket bridge for progress updates
         try:
@@ -415,6 +426,22 @@ class ChatBotService:
         # Execute workflow
         try:
             results = self.executor.execute_workflow(steps, latest_file, progress_callback)
+
+            # Save updated workflow steps to database (they were updated during execution)
+            for step in steps:
+                self.repository.database.save_workflow_step(
+                    chat_id,
+                    step.step_id,
+                    step.operation,
+                    step.arguments,
+                    step.status.value,
+                    step.input_file,
+                    step.output_file,
+                    step.progress,
+                    step.error_message,
+                    step.started_at.isoformat() if step.started_at else None,
+                    step.completed_at.isoformat() if step.completed_at else None,
+                )
 
             # Save output files
             from app.chat.storage import ConversationStorage

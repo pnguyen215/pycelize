@@ -182,9 +182,7 @@ class ChatDatabase:
         """
         conn = self._get_connection()
         try:
-            cursor = conn.execute(
-                "SELECT * FROM conversations WHERE chat_id = ?", (chat_id,)
-            )
+            cursor = conn.execute("SELECT * FROM conversations WHERE chat_id = ?", (chat_id,))
             row = cursor.fetchone()
             if row:
                 return {
@@ -244,9 +242,7 @@ class ChatDatabase:
                         "participant_name": row["participant_name"],
                         "status": row["status"],
                         "partition_key": row["partition_key"],
-                        "metadata": json.loads(row["metadata"])
-                        if row["metadata"]
-                        else {},
+                        "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
                         "created_at": row["created_at"],
                         "updated_at": row["updated_at"],
                     }
@@ -267,9 +263,7 @@ class ChatDatabase:
         """
         conn = self._get_connection()
         try:
-            cursor = conn.execute(
-                "DELETE FROM conversations WHERE chat_id = ?", (chat_id,)
-            )
+            cursor = conn.execute("DELETE FROM conversations WHERE chat_id = ?", (chat_id,))
             conn.commit()
             return cursor.rowcount > 0
         finally:
@@ -287,9 +281,7 @@ class ChatDatabase:
         """
         os.makedirs(snapshot_path, exist_ok=True)
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        backup_file = os.path.join(
-            snapshot_path, f"chat_backup_{timestamp}.db"
-        )
+        backup_file = os.path.join(snapshot_path, f"chat_backup_{timestamp}.db")
 
         # Close any existing connections and copy file
         shutil.copy2(self.db_path, backup_file)
@@ -333,7 +325,7 @@ class ChatDatabase:
                 "SELECT file_path, file_type FROM files WHERE chat_id = ? ORDER BY created_at",
                 (chat_id,),
             )
-            
+
             files = {"uploaded": [], "output": []}
             for row in cursor.fetchall():
                 file_type = row["file_type"]
@@ -341,7 +333,7 @@ class ChatDatabase:
                     files["uploaded"].append(row["file_path"])
                 elif file_type == "output":
                     files["output"].append(row["file_path"])
-            
+
             return files
         finally:
             conn.close()
@@ -358,11 +350,194 @@ class ChatDatabase:
         """
         conn = self._get_connection()
         try:
-            cursor = conn.execute(
-                "DELETE FROM files WHERE chat_id = ?", (chat_id,)
-            )
+            cursor = conn.execute("DELETE FROM files WHERE chat_id = ?", (chat_id,))
             conn.commit()
             return cursor.rowcount > 0
+        finally:
+            conn.close()
+
+    def save_message(
+        self,
+        chat_id: str,
+        message_id: str,
+        message_type: str,
+        content: str,
+        metadata: Dict[str, Any],
+        created_at: str,
+    ) -> None:
+        """
+        Save a message to the database.
+
+        Args:
+            chat_id: Conversation identifier
+            message_id: Message identifier
+            message_type: Type of message
+            content: Message content
+            metadata: Message metadata
+            created_at: Creation timestamp
+        """
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO messages (message_id, chat_id, message_type, content, metadata, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    message_id,
+                    chat_id,
+                    message_type,
+                    content,
+                    json.dumps(metadata),
+                    created_at,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_messages(self, chat_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all messages for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+
+        Returns:
+            List of message dictionaries
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """
+                SELECT message_id, message_type, content, metadata, created_at
+                FROM messages
+                WHERE chat_id = ?
+                ORDER BY created_at ASC
+                """,
+                (chat_id,),
+            )
+
+            messages = []
+            for row in cursor.fetchall():
+                messages.append(
+                    {
+                        "message_id": row["message_id"],
+                        "message_type": row["message_type"],
+                        "content": row["content"],
+                        "metadata": json.loads(row["metadata"]) if row["metadata"] else {},
+                        "created_at": row["created_at"],
+                    }
+                )
+
+            return messages
+        finally:
+            conn.close()
+
+    def save_workflow_step(
+        self,
+        chat_id: str,
+        step_id: str,
+        operation: str,
+        arguments: Dict[str, Any],
+        status: str,
+        input_file: Optional[str] = None,
+        output_file: Optional[str] = None,
+        progress: int = 0,
+        error_message: Optional[str] = None,
+        started_at: Optional[str] = None,
+        completed_at: Optional[str] = None,
+    ) -> None:
+        """
+        Save a workflow step to the database.
+
+        Args:
+            chat_id: Conversation identifier
+            step_id: Step identifier
+            operation: Operation name
+            arguments: Operation arguments
+            status: Step status
+            input_file: Optional input file path
+            output_file: Optional output file path
+            progress: Progress percentage
+            error_message: Optional error message
+            started_at: Optional start timestamp
+            completed_at: Optional completion timestamp
+        """
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                """
+                INSERT INTO workflow_steps
+                (step_id, chat_id, operation, arguments, input_file, output_file,
+                 status, progress, error_message, started_at, completed_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(step_id) DO UPDATE SET
+                    status = excluded.status,
+                    progress = excluded.progress,
+                    output_file = excluded.output_file,
+                    error_message = excluded.error_message,
+                    completed_at = excluded.completed_at
+                """,
+                (
+                    step_id,
+                    chat_id,
+                    operation,
+                    json.dumps(arguments),
+                    input_file,
+                    output_file,
+                    status,
+                    progress,
+                    error_message,
+                    started_at,
+                    completed_at,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_workflow_steps(self, chat_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all workflow steps for a conversation.
+
+        Args:
+            chat_id: Conversation identifier
+
+        Returns:
+            List of workflow step dictionaries
+        """
+        conn = self._get_connection()
+        try:
+            cursor = conn.execute(
+                """
+                SELECT step_id, operation, arguments, input_file, output_file,
+                       status, progress, error_message, started_at, completed_at
+                FROM workflow_steps
+                WHERE chat_id = ?
+                ORDER BY started_at ASC
+                """,
+                (chat_id,),
+            )
+
+            steps = []
+            for row in cursor.fetchall():
+                steps.append(
+                    {
+                        "step_id": row["step_id"],
+                        "operation": row["operation"],
+                        "arguments": json.loads(row["arguments"]) if row["arguments"] else {},
+                        "input_file": row["input_file"],
+                        "output_file": row["output_file"],
+                        "status": row["status"],
+                        "progress": row["progress"],
+                        "error_message": row["error_message"],
+                        "started_at": row["started_at"],
+                        "completed_at": row["completed_at"],
+                    }
+                )
+
+            return steps
         finally:
             conn.close()
 
