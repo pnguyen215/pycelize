@@ -10,7 +10,7 @@
 
 **New to Pycelize Chat Bot?** Follow this reading order:
 
-1. **[CHAT_INTEGRATE_FRONTEND.md](./CHAT_INTEGRATE_FRONTEND.md)** ⭐ **MAIN GUIDE**
+1. **[FRONTEND_CHATBOT_INTEGRATION.md](./FRONTEND_CHATBOT_INTEGRATION.md)** ⭐ **MAIN GUIDE**
    - **Size**: 1,512 lines (37KB)
    - **Time to read**: 30-45 minutes
    - **What's inside**:
@@ -22,10 +22,10 @@
      - Best practices & error handling
      - Testing guide
      - Troubleshooting
-   
+
    **Start here for step-by-step instructions!**
 
-2. **[FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md)** 📊 **VISUAL DIAGRAMS**
+2. **[FRONTEND\_\_CHATBOT_ARCHITECTURE.md](./FRONTEND_CHATBOT_ARCHITECTURE.md)** 📊 **VISUAL DIAGRAMS**
    - **Size**: 550 lines (13.5KB)
    - **Time to read**: 15-20 minutes
    - **What's inside**:
@@ -36,10 +36,10 @@
      - WebSocket message flow
      - Error handling flow
      - File structure
-   
+
    **Read this to understand the big picture!**
 
-3. **[FRONTEND_GUIDE_SUMMARY.md](./FRONTEND_GUIDE_SUMMARY.md)** 📋 **QUICK REFERENCE**
+3. **[FRONTEND_CHATBOT_GUIDE.md](./FRONTEND_CHATBOT_GUIDE.md)** 📋 **QUICK REFERENCE**
    - **Size**: 311 lines (7.5KB)
    - **Time to read**: 5 minutes
    - **What's inside**:
@@ -47,7 +47,7 @@
      - Statistics and metrics
      - Learning path
      - Time savings analysis
-   
+
    **Read this for a quick overview!**
 
 ---
@@ -56,13 +56,13 @@
 
 ```bash
 # 1. Read the guide (10 min)
-open docs/CHAT_INTEGRATE_FRONTEND.md
+open docs/FRONTEND_CHATBOT_INTEGRATION.md
 
 # 2. Install shadcn/ui components (5 min)
 npx shadcn-ui@latest add button input card avatar badge dialog progress toast
 
 # 3. Copy API client & hooks (10 min)
-# From CHAT_INTEGRATE_FRONTEND.md sections:
+# From FRONTEND_CHATBOT_INTEGRATION.md sections:
 # - "Chat Bot API Integration"
 # - "WebSocket Integration"
 
@@ -82,17 +82,19 @@ npx shadcn-ui@latest add button input card avatar badge dialog progress toast
 ### UI Components (5 Components)
 
 1. **ChatMessage** - Telegram-style message bubbles
+
    ```tsx
    <ChatMessage
      message={{
-       type: 'user' | 'system' | 'file',
+       type: "user" | "system" | "file",
        content: "Extract columns: name, email",
-       timestamp: new Date()
+       timestamp: new Date(),
      }}
    />
    ```
 
 2. **ChatInput** - Input with file upload
+
    ```tsx
    <ChatInput
      onSendMessage={sendMessage}
@@ -102,14 +104,13 @@ npx shadcn-ui@latest add button input card avatar badge dialog progress toast
    ```
 
 3. **ChatMessages** - Scrollable container
+
    ```tsx
-   <ChatMessages
-     messages={messages}
-     workflowProgress={progress}
-   />
+   <ChatMessages messages={messages} workflowProgress={progress} />
    ```
 
 4. **WorkflowConfirmDialog** - Confirmation modal
+
    ```tsx
    <WorkflowConfirmDialog
      workflow={pendingWorkflow}
@@ -131,34 +132,27 @@ npx shadcn-ui@latest add button input card avatar badge dialog progress toast
 ### Custom Hooks (3 Hooks)
 
 1. **useChatBot** - Main bot interaction
+
    ```typescript
-   const {
-     chatId,
-     messages,
-     sendMessage,
-     uploadFile,
-     confirmWorkflow
-   } = useChatBot();
+   const { chatId, messages, sendMessage, uploadFile, confirmWorkflow } =
+     useChatBot();
    ```
 
 2. **useChatWebSocket** - WebSocket connection
+
    ```typescript
    useChatWebSocket(chatId, handleMessage);
    ```
 
 3. **useWebSocketHandler** - Message handling
    ```typescript
-   const handleMessage = useWebSocketHandler(
-     onProgress,
-     onComplete,
-     onError
-   );
+   const handleMessage = useWebSocketHandler(onProgress, onComplete, onError);
    ```
 
 ### API Client (7 Endpoints)
 
 ```typescript
-import { chatBotAPI } from '@/api/chatbot';
+import { chatBotAPI } from "@/api/chatbot";
 
 // 1. Create conversation
 const chat = await chatBotAPI.createConversation();
@@ -236,6 +230,7 @@ http://localhost:5050/api/v1/chat/bot/conversations
 ```
 
 **Endpoints:**
+
 - POST `/conversations` - Create
 - POST `/conversations/{id}/message` - Send message
 - POST `/conversations/{id}/upload` - Upload file
@@ -251,6 +246,7 @@ ws://localhost:5051/chat/{chat_id}
 ```
 
 **Message Types:**
+
 - `connected` - Welcome
 - `workflow_started` - Execution begins
 - `progress` - Real-time updates (0-100%)
@@ -258,14 +254,15 @@ ws://localhost:5051/chat/{chat_id}
 - `workflow_failed` - Error
 
 **Your Integration:**
+
 ```typescript
-import { WebSocketManager } from '@/lib/websocket-manager';
+import { WebSocketManager } from "@/lib/websocket-manager";
 
 // Reuse your existing class!
 const ws = new WebSocketManager({
   url: `ws://localhost:5051/chat/${chatId}`,
   onMessage: handleMessage,
-  reconnect: true
+  reconnect: true,
 });
 ```
 
@@ -275,27 +272,29 @@ const ws = new WebSocketManager({
 
 ### Implementation Time
 
-| Task | Time |
-|------|------|
-| Read documentation | 30-45 min |
-| Understand architecture | 15 min |
-| Setup shadcn/ui | 5 min |
-| Copy API client | 5 min |
-| Copy hooks | 10 min |
-| Copy components | 10 min |
-| Build main page | 5 min |
-| Testing & polish | 1-2 hours |
-| **Total** | **2-4 hours** |
+| Task                    | Time          |
+| ----------------------- | ------------- |
+| Read documentation      | 30-45 min     |
+| Understand architecture | 15 min        |
+| Setup shadcn/ui         | 5 min         |
+| Copy API client         | 5 min         |
+| Copy hooks              | 10 min        |
+| Copy components         | 10 min        |
+| Build main page         | 5 min         |
+| Testing & polish        | 1-2 hours     |
+| **Total**               | **2-4 hours** |
 
 ### Before vs After
 
 **Before this documentation:**
+
 - 😓 2-3 days of trial and error
 - 🤔 Guessing API structure
 - 🐛 Many bugs and edge cases
 - 📚 Reading multiple docs
 
 **After this documentation:**
+
 - 😊 2-4 hours to production-ready
 - ✅ Clear API examples
 - 🎯 Best practices built-in
@@ -311,17 +310,17 @@ const ws = new WebSocketManager({
 
 ```
 Day 1: Backend Understanding
-  ├─ Read main README.md
+  ├─ Read main FRONTEND_CHATBOT_README.md
   ├─ Understand chat bot concept
   └─ Test APIs with cURL
 
 Day 2: Frontend Architecture
-  ├─ Read FRONTEND_ARCHITECTURE.md
+  ├─ Read FRONTEND_CHATBOT_ARCHITECTURE.md
   ├─ Understand data flows
   └─ Review diagrams
 
 Day 3: Implementation
-  ├─ Read CHAT_INTEGRATE_FRONTEND.md
+  ├─ Read FRONTEND_CHATBOT_INTEGRATION.md
   ├─ Follow Quick Start guide
   └─ Build working prototype
 
@@ -335,9 +334,9 @@ Day 4: Polish
 
 ```
 Hour 1: Quick Start
-  ├─ Skim FRONTEND_GUIDE_SUMMARY.md (5 min)
-  ├─ Review FRONTEND_ARCHITECTURE.md (15 min)
-  └─ Copy code from CHAT_INTEGRATE_FRONTEND.md (40 min)
+  ├─ Skim FRONTEND_CHATBOT_GUIDE.md (5 min)
+  ├─ Review FRONTEND_CHATBOT_ARCHITECTURE.md (15 min)
+  └─ Copy code from FRONTEND_CHATBOT_INTEGRATION.md (40 min)
 
 Hour 2: Implementation
   ├─ Setup project structure
@@ -399,19 +398,19 @@ Hour 3-4: Polish & Deploy
 
 ### Documentation
 
-- **Main Guide**: [CHAT_INTEGRATE_FRONTEND.md](./CHAT_INTEGRATE_FRONTEND.md)
-- **Architecture**: [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md)
-- **Summary**: [FRONTEND_GUIDE_SUMMARY.md](./FRONTEND_GUIDE_SUMMARY.md)
+- **Main Guide**: [FRONTEND_CHATBOT_INTEGRATION.md](./FRONTEND_CHATBOT_INTEGRATION.md)
+- **Architecture**: [FRONTEND\_\_CHATBOT_ARCHITECTURE.md](./FRONTEND_CHATBOT_ARCHITECTURE.md)
+- **Summary**: [FRONTEND_CHATBOT_GUIDE.md](./FRONTEND_CHATBOT_GUIDE.md)
 
 ### Related Docs
 
-- **Backend API**: [../README.md](../README.md)
-- **Backend Architecture**: [../CHATBOT_IMPLEMENTATION.md](../CHATBOT_IMPLEMENTATION.md)
+- **Backend API**: [../FRONTEND_CHATBOT_README.md](../FRONTEND_CHATBOT_README.md)
+- **Backend Architecture**: [../BACKEND_CHATBOT.md](./BACKEND_CHATBOT.md)
 - **WebSocket Details**: [./WEBSOCKET_USAGE.md](./WEBSOCKET_USAGE.md)
 
 ### Troubleshooting
 
-Common issues? See the **Troubleshooting** section in [CHAT_INTEGRATE_FRONTEND.md](./CHAT_INTEGRATE_FRONTEND.md#troubleshooting)
+Common issues? See the **Troubleshooting** section in [FRONTEND_CHATBOT_INTEGRATION.md](./FRONTEND_CHATBOT_INTEGRATION.md#troubleshooting)
 
 ---
 
@@ -430,7 +429,7 @@ Common issues? See the **Troubleshooting** section in [CHAT_INTEGRATE_FRONTEND.m
 
 ## 🚀 Get Started Now!
 
-1. Open [CHAT_INTEGRATE_FRONTEND.md](./CHAT_INTEGRATE_FRONTEND.md)
+1. Open [FRONTEND_CHATBOT_INTEGRATION.md](./FRONTEND_CHATBOT_INTEGRATION.md)
 2. Follow the Quick Start guide
 3. Build amazing chat interfaces!
 

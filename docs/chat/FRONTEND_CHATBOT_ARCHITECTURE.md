@@ -465,4 +465,4 @@ Step 6: Test
 
 **All diagrams and flows are detailed in the main guide!**
 
-See `docs/CHAT_INTEGRATE_FRONTEND.md` for complete code examples.
+See `docs/FRONTEND_CHATBOT_INTEGRATION.md` for complete code examples.

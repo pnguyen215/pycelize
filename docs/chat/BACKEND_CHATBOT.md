@@ -9,6 +9,7 @@ A complete Telegram-like chat bot feature has been successfully implemented for 
 ### 1. Core Components (7 New Modules)
 
 #### IntentClassifier (`app/chat/intent_classifier.py`)
+
 - **Purpose**: Understands user messages and maps them to appropriate operations
 - **Capabilities**:
   - Recognizes 8 different intent types (extract, convert, normalize, SQL, JSON, search, bind, map)
@@ -19,6 +20,7 @@ A complete Telegram-like chat bot feature has been successfully implemented for 
 - **Lines**: 460
 
 #### ConversationStateManager (`app/chat/state_manager.py`)
+
 - **Purpose**: Manages conversation state and context
 - **Capabilities**:
   - Tracks 8 conversation states (idle, awaiting_file, awaiting_confirmation, processing, etc.)
@@ -29,6 +31,7 @@ A complete Telegram-like chat bot feature has been successfully implemented for 
 - **Lines**: 383
 
 #### MessageHandlers (`app/chat/message_handlers.py`)
+
 - **Purpose**: Processes different types of messages using Chain of Responsibility pattern
 - **Handlers**:
   - `TextMessageHandler`: Processes text messages, uses IntentClassifier
@@ -38,6 +41,7 @@ A complete Telegram-like chat bot feature has been successfully implemented for 
 - **Lines**: 532
 
 #### StreamingWorkflowExecutor (`app/chat/streaming_executor.py`)
+
 - **Purpose**: Executes workflows asynchronously with real-time updates
 - **Capabilities**:
   - Extends existing WorkflowExecutor
@@ -48,6 +52,7 @@ A complete Telegram-like chat bot feature has been successfully implemented for 
 - **Lines**: 156
 
 #### ChatBotService (`app/chat/chatbot_service.py`)
+
 - **Purpose**: Orchestrates the entire conversation flow
 - **Capabilities**:
   - Integrates all components
@@ -58,21 +63,22 @@ A complete Telegram-like chat bot feature has been successfully implemented for 
 - **Lines**: 494
 
 #### API Routes (`app/api/routes/chatbot_routes.py`)
+
 - **Purpose**: Provides REST API endpoints for bot interactions
 - **Endpoints**: 7 endpoints (create, message, upload, confirm, history, delete, operations)
 - **Lines**: 410
 
 ### 2. REST API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/chat/bot/conversations` | Start new bot conversation |
-| POST | `/chat/bot/conversations/{id}/message` | Send message to bot |
-| POST | `/chat/bot/conversations/{id}/upload` | Upload file |
-| POST | `/chat/bot/conversations/{id}/confirm` | Confirm/decline workflow |
-| GET | `/chat/bot/conversations/{id}/history` | Get conversation history |
-| DELETE | `/chat/bot/conversations/{id}` | Delete conversation |
-| GET | `/chat/bot/operations` | Get supported operations |
+| Method | Endpoint                               | Description                |
+| ------ | -------------------------------------- | -------------------------- |
+| POST   | `/chat/bot/conversations`              | Start new bot conversation |
+| POST   | `/chat/bot/conversations/{id}/message` | Send message to bot        |
+| POST   | `/chat/bot/conversations/{id}/upload`  | Upload file                |
+| POST   | `/chat/bot/conversations/{id}/confirm` | Confirm/decline workflow   |
+| GET    | `/chat/bot/conversations/{id}/history` | Get conversation history   |
+| DELETE | `/chat/bot/conversations/{id}`         | Delete conversation        |
+| GET    | `/chat/bot/operations`                 | Get supported operations   |
 
 ### 3. Supported Intents
 
@@ -98,17 +104,19 @@ cancelled ← cancelled ← cancelled ← failed → idle
 ### 5. Testing
 
 **Unit Tests:**
+
 - `test_intent_classifier.py`: 20 tests (all passing ✅)
 - `test_state_manager.py`: 28 tests (all passing ✅)
 
 **Integration Tests:**
+
 - `test_chatbot_api.py`: 17 tests covering all API endpoints
 
 **Total**: 65 tests, all passing ✅
 
 ### 6. Documentation
 
-- **README.md**: Added 614+ lines of documentation
+- **FRONTEND_CHATBOT_README.md**: Added 614+ lines of documentation
   - Complete API reference
   - cURL examples for all endpoints
   - Supported intents table
@@ -139,7 +147,7 @@ Bot: "I can help you extract specific columns. Please upload your file."
 
 Bot: "File uploaded! I suggest:
      1. excel/extract-columns-to-file: Extract name, email, phone
-     
+
      Would you like me to proceed? (yes/no)"
 
 User: "yes"
@@ -185,24 +193,21 @@ Bot: "🚀 Starting workflow execution..."
 ### New Files (10)
 
 **Core Services:**
+
 1. `app/chat/intent_classifier.py`
 2. `app/chat/state_manager.py`
 3. `app/chat/message_handlers.py`
 4. `app/chat/streaming_executor.py`
 5. `app/chat/chatbot_service.py`
 
-**API:**
-6. `app/api/routes/chatbot_routes.py`
+**API:** 6. `app/api/routes/chatbot_routes.py`
 
-**Tests:**
-7. `tests/test_intent_classifier.py`
-8. `tests/test_state_manager.py`
-9. `tests/integration/test_chatbot_api.py`
+**Tests:** 7. `tests/test_intent_classifier.py` 8. `tests/test_state_manager.py` 9. `tests/integration/test_chatbot_api.py`
 
-**Documentation:**
-10. Updated `README.md` (major additions)
+**Documentation:** 10. Updated `FRONTEND_CHATBOT_README.md` (major additions)
 
 ### Modified Files (1)
+
 - `app/__init__.py` (registered chatbot blueprint)
 
 ## Code Quality
@@ -217,16 +222,19 @@ Bot: "🚀 Starting workflow execution..."
 ## Deployment Notes
 
 ### Requirements
+
 - All dependencies already in `requirements.txt`
 - No additional packages needed
 - Compatible with Python 3.9+
 
 ### Configuration
+
 - Uses existing `configs/application.yml`
 - Chat workflows must be enabled: `chat_workflows.enabled: true`
 - WebSocket server runs on port 5051
 
 ### Testing
+
 ```bash
 # Run all tests
 pytest tests/test_intent_classifier.py -v
@@ -235,6 +243,7 @@ pytest tests/integration/test_chatbot_api.py -v
 ```
 
 ### Starting the Server
+
 ```bash
 python run.py
 ```
@@ -309,7 +318,3 @@ The chat bot feature is **production-ready** and fully integrated with the exist
 **Documentation**: Complete with examples
 
 **Code Quality**: Formatted and reviewed
-
----
-
-*Implementation completed on 2026-02-08*
