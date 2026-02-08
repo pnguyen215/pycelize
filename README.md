@@ -20,6 +20,7 @@ A professional Flask application for Excel/CSV processing with comprehensive API
 - [Excel Binding APIs](#excel-binding-apis)
 - [JSON Generation Features](#json-generation-features)
 - [Chat Workflows API Reference](#chat-workflows-api-reference)
+- [Chat Bot API Reference](#chat-bot-api-reference)
 - [WebSocket Integration](#websocket-integration)
 - [Frontend Integration Guide](#frontend-integration-guide)
 - [Design Patterns](#design-patterns)
@@ -34,15 +35,24 @@ A professional Flask application for Excel/CSV processing with comprehensive API
 
 Pycelize is a production-ready Flask application designed for processing Excel and CSV files. It provides RESTful APIs for common data operations including extraction, normalization, mapping, SQL generation, and file binding.
 
-### New: Chat Workflows
+### New: Chat Workflows & Chat Bot
 
-Pycelize now includes **Chat Workflows** - a powerful feature for sequential file processing with real-time progress tracking via WebSocket. This enables:
+Pycelize now includes **Chat Workflows** and a **Telegram-like Chat Bot** - powerful features for file processing:
 
+#### Chat Workflows
 - **Conversational processing**: Process files through multi-step workflows
 - **Real-time updates**: Monitor progress via WebSocket streaming
 - **Dump & Restore**: Backup and restore complete conversations
 - **Partition-based storage**: Scalable file organization
 - **Download management**: Absolute URLs for easy file access
+
+#### Chat Bot 🤖 (NEW!)
+- **Natural Language Interface**: Describe what you want to do in plain English
+- **Intent Classification**: Automatically understands your requests
+- **Workflow Suggestions**: Proposes appropriate processing steps
+- **Interactive Confirmation**: Review and modify workflows before execution
+- **Real-time Progress**: WebSocket updates during processing
+- **Smart State Management**: Context-aware responses based on conversation flow
 
 ## ✨ Features
 
@@ -70,6 +80,18 @@ Pycelize now includes **Chat Workflows** - a powerful feature for sequential fil
 - **Partition System**: Time-based or hash-based file organization
 - **SQLite Integration**: Fast metadata queries and indexing
 
+### Chat Bot Features 🤖 (NEW!)
+
+- **Intent Classification**: Understands 8+ types of requests (extract, convert, normalize, SQL, JSON, search, bind, map)
+- **Natural Language Processing**: Keyword and pattern matching for intent detection
+- **Conversational State Management**: Tracks conversation flow (idle, awaiting_file, awaiting_confirmation, processing, etc.)
+- **Message Handler Chain**: Chain of Responsibility pattern for flexible message processing
+- **Streaming Workflow Execution**: Async/await with non-blocking background execution
+- **Interactive Workflow Modification**: Users can confirm, decline, or modify suggested workflows
+- **Special Commands**: Help, cancel, yes/no commands for easy navigation
+- **Context-Aware Responses**: Bot remembers conversation history and adapts responses
+- **Error Recovery**: Clear error messages with suggestions for recovery
+
 ## 📁 Project Structure
 
 ```
@@ -85,17 +107,23 @@ pycelize/
 │   │       ├── sql_routes.py
 │   │       ├── json_routes.py
 │   │       ├── file_routes.py
-│   │       └── chat_routes.py   # Chat Workflows APIs
-│   ├── chat/                    # Chat Workflows components
+│   │       ├── chat_routes.py   # Chat Workflows APIs
+│   │       └── chatbot_routes.py # Chat Bot APIs
+│   ├── chat/                    # Chat Workflows & Bot components
 │   │   ├── __init__.py
 │   │   ├── models.py            # Conversation, Message, WorkflowStep models
 │   │   ├── database.py          # SQLite database management
 │   │   ├── storage.py           # File storage and partitioning
 │   │   ├── repository.py        # Repository pattern implementation
 │   │   ├── workflow_executor.py # Chain of Responsibility for execution
+│   │   ├── streaming_executor.py # Async workflow executor
 │   │   ├── websocket_server.py  # WebSocket server
 │   │   ├── websocket_bridge.py  # Thread-safe Flask ↔ WebSocket bridge
-│   │   └── name_generator.py    # Participant name generation
+│   │   ├── name_generator.py    # Participant name generation
+│   │   ├── intent_classifier.py # NLP intent classification
+│   │   ├── state_manager.py     # Conversation state management
+│   │   ├── message_handlers.py  # Message handler chain
+│   │   └── chatbot_service.py   # Chat bot orchestration service
 │   ├── core/
 │   │   ├── config.py            # Configuration management
 │   │   ├── exceptions.py        # Custom exceptions
@@ -1974,6 +2002,587 @@ const ws = new WebSocket("ws://127.0.0.1:5051/chat/{chat_id}");
 ---
 
 For detailed WebSocket documentation, see [WEBSOCKET_USAGE.md](./docs/WEBSOCKET_USAGE.md)
+
+---
+
+## 🤖 Chat Bot API Reference
+
+### Overview
+
+The Chat Bot feature provides a **Telegram-like conversational interface** for file processing. Users can interact with the bot using natural language to describe what they want to do with their files, and the bot will:
+
+1. **Interpret the intent** using NLP/pattern matching
+2. **Suggest appropriate workflows** based on the request
+3. **Request confirmation** before execution
+4. **Execute workflows** with real-time progress updates
+5. **Provide download links** for the results
+
+### Architecture
+
+```
+User → Message → IntentClassifier → StateManager → MessageHandlers
+                                                           ↓
+                                            StreamingWorkflowExecutor
+                                                           ↓
+                                            WebSocket Progress Updates
+                                                           ↓
+                                            Download Links
+```
+
+### Supported Intents
+
+The bot can understand and process the following types of requests:
+
+| Intent Type | Keywords | Operations |
+|-------------|----------|------------|
+| **Extract Columns** | extract, get, select, column | `excel/extract-columns`, `excel/extract-columns-to-file` |
+| **Convert Format** | convert, transform, export as | `csv/convert-to-excel`, `json/generate` |
+| **Normalize Data** | normalize, clean, standardize, trim, uppercase | `normalization/apply` |
+| **Generate SQL** | sql, insert, database, query | `sql/generate`, `sql/generate-to-text` |
+| **Generate JSON** | json, export json | `json/generate`, `json/generate-with-template` |
+| **Search/Filter** | search, filter, find, query, where | `excel/search`, `csv/search` |
+| **Bind Data** | bind, merge, join, combine | `excel/bind-single-key`, `excel/bind-multi-key` |
+| **Map Columns** | map, rename, remap | `excel/map-columns` |
+
+### Chat Bot API Endpoints
+
+#### 1. Start New Bot Conversation
+
+Create a new chat bot conversation.
+
+```bash
+POST /api/v1/chat/bot/conversations
+Content-Type: application/json
+```
+
+**Request Body (Optional)**:
+
+```json
+{
+  "chat_id": "optional-custom-id"
+}
+```
+
+**Response**:
+
+```json
+{
+  "status_code": 201,
+  "message": "Bot conversation started successfully",
+  "data": {
+    "chat_id": "550e8400-e29b-41d4-a716-446655440000",
+    "participant_name": "BlueWhale-4821",
+    "status": "created",
+    "bot_message": "👋 Welcome to Pycelize Chat Bot!\n\nI'm here to help you process Excel and CSV files...",
+    "state": "idle",
+    "created_at": "2026-02-08T10:30:00.000000"
+  }
+}
+```
+
+**cURL Example**:
+
+```bash
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+#### 2. Send Message to Bot
+
+Send a text message to the bot describing what you want to do.
+
+```bash
+POST /api/v1/chat/bot/conversations/{chat_id}/message
+Content-Type: application/json
+```
+
+**Request Body**:
+
+```json
+{
+  "message": "extract columns: name, email, phone"
+}
+```
+
+**Response**:
+
+```json
+{
+  "status_code": 200,
+  "message": "Message processed successfully",
+  "data": {
+    "bot_response": "I can help you extract specific columns from your file. I suggest: Extract specific columns to a new file\n\n📋 **Suggested Workflow:**\n1. excel/extract-columns-to-file: Extract specific columns to a new file\n\nWould you like me to proceed with this workflow? (yes/no)\nOr you can ask me to modify specific parameters.",
+    "intent": {
+      "type": "extract_columns",
+      "confidence": 0.9
+    },
+    "suggested_workflow": [
+      {
+        "operation": "excel/extract-columns-to-file",
+        "arguments": {
+          "columns": ["name", "email", "phone"],
+          "remove_duplicates": false
+        },
+        "description": "Extract specific columns to a new file"
+      }
+    ],
+    "requires_confirmation": true,
+    "requires_file": true
+  }
+}
+```
+
+**cURL Examples**:
+
+```bash
+# Example 1: Extract columns
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "extract columns: name, email, phone"}'
+
+# Example 2: Convert to JSON
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "convert to JSON"}'
+
+# Example 3: Generate SQL
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "generate SQL insert statements for table users"}'
+
+# Example 4: Normalize data
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "normalize data - uppercase and trim"}'
+
+# Example 5: Help command
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "help"}'
+```
+
+#### 3. Upload File to Bot
+
+Upload a file to the bot conversation.
+
+```bash
+POST /api/v1/chat/bot/conversations/{chat_id}/upload
+Content-Type: multipart/form-data
+```
+
+**Request**:
+
+```
+file: @path/to/file.xlsx
+```
+
+**Response**:
+
+```json
+{
+  "status_code": 200,
+  "message": "File uploaded successfully",
+  "data": {
+    "file_path": "./automation/workflows/2026/02/{chat_id}/uploads/data.xlsx",
+    "filename": "data.xlsx",
+    "download_url": "http://localhost:5050/api/v1/chat/workflows/{chat_id}/files/data.xlsx",
+    "bot_response": "✅ File 'data.xlsx' uploaded successfully!\n\n📋 **Suggested Workflow:**\n1. excel/extract-columns-to-file: Extract specific columns to a new file\n\nWould you like me to proceed with this workflow? (yes/no)",
+    "suggested_workflow": [
+      {
+        "operation": "excel/extract-columns-to-file",
+        "arguments": {
+          "columns": ["name", "email", "phone"],
+          "remove_duplicates": false
+        }
+      }
+    ],
+    "requires_confirmation": true
+  }
+}
+```
+
+**cURL Example**:
+
+```bash
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/upload \
+  -F "file=@data.xlsx"
+```
+
+#### 4. Confirm/Decline Workflow
+
+Confirm or decline the bot's suggested workflow.
+
+```bash
+POST /api/v1/chat/bot/conversations/{chat_id}/confirm
+Content-Type: application/json
+```
+
+**Request Body**:
+
+```json
+{
+  "confirmed": true,
+  "modified_workflow": [
+    {
+      "operation": "excel/extract-columns-to-file",
+      "arguments": {
+        "columns": ["name", "email"],
+        "remove_duplicates": true
+      }
+    }
+  ]
+}
+```
+
+**Response (Success)**:
+
+```json
+{
+  "status_code": 200,
+  "message": "Workflow confirmation processed",
+  "data": {
+    "bot_response": "✅ Workflow completed successfully! Your files are ready for download.",
+    "output_files": [
+      {
+        "file_path": "./automation/workflows/2026/02/{chat_id}/outputs/result.xlsx",
+        "download_url": "http://localhost:5050/api/v1/chat/workflows/{chat_id}/files/result.xlsx"
+      }
+    ],
+    "results": [
+      {
+        "output_file_path": "...",
+        "download_url": "..."
+      }
+    ]
+  }
+}
+```
+
+**cURL Examples**:
+
+```bash
+# Confirm workflow
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"confirmed": true}'
+
+# Decline workflow
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"confirmed": false}'
+
+# Confirm with modifications
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/confirm \
+  -H "Content-Type: application/json" \
+  -d '{
+    "confirmed": true,
+    "modified_workflow": [
+      {
+        "operation": "excel/extract-columns-to-file",
+        "arguments": {
+          "columns": ["name", "email"],
+          "remove_duplicates": true
+        }
+      }
+    ]
+  }'
+```
+
+#### 5. Get Conversation History
+
+Retrieve the full conversation history with the bot.
+
+```bash
+GET /api/v1/chat/bot/conversations/{chat_id}/history?limit=50
+```
+
+**Query Parameters**:
+
+- `limit`: Optional maximum number of messages to return
+
+**Response**:
+
+```json
+{
+  "status_code": 200,
+  "message": "Conversation history retrieved successfully",
+  "data": {
+    "chat_id": "550e8400-e29b-41d4-a716-446655440000",
+    "participant_name": "BlueWhale-4821",
+    "status": "completed",
+    "current_state": "idle",
+    "messages": [
+      {
+        "message_id": "msg-1",
+        "message_type": "system",
+        "content": "👋 Welcome to Pycelize Chat Bot!...",
+        "created_at": "2026-02-08T10:30:00.000000"
+      },
+      {
+        "message_id": "msg-2",
+        "message_type": "user",
+        "content": "extract columns: name, email",
+        "created_at": "2026-02-08T10:31:00.000000"
+      },
+      {
+        "message_id": "msg-3",
+        "message_type": "system",
+        "content": "I can help you extract specific columns...",
+        "created_at": "2026-02-08T10:31:01.000000"
+      }
+    ],
+    "uploaded_files": [
+      {
+        "file_path": "...",
+        "download_url": "http://localhost:5050/api/v1/chat/workflows/{chat_id}/files/data.xlsx"
+      }
+    ],
+    "output_files": [
+      {
+        "file_path": "...",
+        "download_url": "http://localhost:5050/api/v1/chat/workflows/{chat_id}/files/result.xlsx"
+      }
+    ],
+    "workflow_steps": [...]
+  }
+}
+```
+
+**cURL Example**:
+
+```bash
+curl -X GET "http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/history?limit=50"
+```
+
+#### 6. Delete Bot Conversation
+
+Delete a bot conversation and all associated data.
+
+```bash
+DELETE /api/v1/chat/bot/conversations/{chat_id}
+```
+
+**Response**:
+
+```json
+{
+  "status_code": 200,
+  "message": "Bot conversation deleted successfully",
+  "data": {
+    "chat_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+**cURL Example**:
+
+```bash
+curl -X DELETE http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}
+```
+
+#### 7. Get Supported Operations
+
+Get a list of all supported operations and intents.
+
+```bash
+GET /api/v1/chat/bot/operations
+```
+
+**Response**:
+
+```json
+{
+  "status_code": 200,
+  "message": "Supported operations retrieved successfully",
+  "data": {
+    "operations": {
+      "extract_columns": ["excel/extract-columns", "excel/extract-columns-to-file"],
+      "convert_format": ["csv/convert-to-excel", "json/generate"],
+      "normalize_data": ["normalization/apply"],
+      "generate_sql": ["sql/generate", "sql/generate-to-text"],
+      "generate_json": ["json/generate", "json/generate-with-template"],
+      "search_filter": ["excel/search", "csv/search"],
+      "bind_data": ["excel/bind-single-key", "excel/bind-multi-key"],
+      "map_columns": ["excel/map-columns"]
+    },
+    "total_intents": 8
+  }
+}
+```
+
+**cURL Example**:
+
+```bash
+curl -X GET http://localhost:5050/api/v1/chat/bot/operations
+```
+
+### Bot Conversation States
+
+The bot manages conversation state to provide context-aware responses:
+
+```
+idle → awaiting_file → awaiting_confirmation → processing → completed → idle
+  ↓          ↓                    ↓                ↓
+cancelled ← cancelled ← cancelled ← failed → idle
+```
+
+| State | Description |
+|-------|-------------|
+| **idle** | Ready for new request |
+| **awaiting_file** | Waiting for file upload |
+| **awaiting_confirmation** | Waiting for user to confirm/decline workflow |
+| **awaiting_parameters** | Waiting for additional parameters |
+| **processing** | Workflow execution in progress |
+| **completed** | Workflow completed successfully |
+| **failed** | Workflow failed |
+| **cancelled** | User cancelled the operation |
+
+### WebSocket Messages for Bot
+
+The bot uses the same WebSocket infrastructure as Chat Workflows. Connect to:
+
+```
+ws://127.0.0.1:5051/chat/{chat_id}
+```
+
+**Bot-Specific Messages**:
+
+```json
+// Workflow started
+{
+  "type": "workflow_started",
+  "chat_id": "...",
+  "total_steps": 3,
+  "message": "🚀 Starting workflow execution..."
+}
+
+// Progress update
+{
+  "type": "progress",
+  "chat_id": "...",
+  "step_id": "...",
+  "operation": "excel/extract-columns-to-file",
+  "progress": 50,
+  "status": "running",
+  "message": "Processing..."
+}
+
+// Workflow completed
+{
+  "type": "workflow_completed",
+  "chat_id": "...",
+  "total_steps": 3,
+  "output_files_count": 1,
+  "message": "✅ Workflow completed successfully!"
+}
+
+// Workflow failed
+{
+  "type": "workflow_failed",
+  "chat_id": "...",
+  "error": "...",
+  "message": "❌ Workflow failed: ..."
+}
+```
+
+### Complete Chat Bot Workflow Example
+
+```bash
+# 1. Start conversation
+CHAT_ID=$(curl -s -X POST http://localhost:5050/api/v1/chat/bot/conversations | jq -r '.data.chat_id')
+
+echo "Chat ID: $CHAT_ID"
+
+# 2. Send message
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/$CHAT_ID/message \
+  -H "Content-Type: application/json" \
+  -d '{"message": "extract columns: name, email, phone"}'
+
+# 3. Upload file
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/$CHAT_ID/upload \
+  -F "file=@data.xlsx"
+
+# 4. Confirm workflow
+curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/$CHAT_ID/confirm \
+  -H "Content-Type: application/json" \
+  -d '{"confirmed": true}'
+
+# 5. Get conversation history
+curl -X GET http://localhost:5050/api/v1/chat/bot/conversations/$CHAT_ID/history
+
+# 6. Delete conversation (cleanup)
+curl -X DELETE http://localhost:5050/api/v1/chat/bot/conversations/$CHAT_ID
+```
+
+### Special Bot Commands
+
+The bot recognizes several special commands:
+
+| Command | Description |
+|---------|-------------|
+| **help** or **?** | Display help information |
+| **cancel**, **stop**, **quit** | Cancel current operation |
+| **yes**, **y**, **ok**, **proceed** | Confirm workflow |
+| **no**, **n** | Decline workflow |
+
+### Message Examples
+
+Here are various ways to interact with the bot:
+
+```bash
+# Extract columns
+"extract columns: name, email, phone"
+"get the name and email columns"
+"select columns: customer_id, amount"
+
+# Convert formats
+"convert to JSON"
+"export as CSV"
+"transform to Excel"
+
+# Normalize data
+"normalize data - uppercase and trim"
+"clean the data"
+"standardize phone numbers"
+
+# Generate SQL
+"generate SQL for table users"
+"create insert statements"
+"generate SQL with auto-increment"
+
+# Search/Filter
+"search for records where status = active"
+"filter data where amount > 1000"
+"find customers in New York"
+
+# Bind/Merge
+"bind data from another file"
+"merge with customer_info.xlsx"
+
+# Map columns
+"rename columns"
+"map column names"
+```
+
+### Error Handling
+
+The bot provides clear error messages and recovery options:
+
+```json
+{
+  "success": false,
+  "error": "No uploaded file found",
+  "bot_response": "📎 Please upload your file first before I can process it."
+}
+```
+
+Common errors:
+
+- **No file uploaded**: Bot will request file upload
+- **Unknown intent**: Bot will ask for clarification or show help
+- **Workflow execution failed**: Bot will explain the error and suggest retry
+- **Invalid parameters**: Bot will request correct parameters
 
 ---
 
