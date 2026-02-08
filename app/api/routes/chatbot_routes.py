@@ -200,10 +200,7 @@ def upload_bot_file(chat_id: str):
             chat_id, conversation.partition_key, file_content, filename
         )
 
-        # Save file metadata to database
-        repository.database.save_file(chat_id, file_path, "uploaded")
-
-        # Process file upload through bot service
+        # Process file upload through bot service (this will save to database)
         result = chatbot_service.upload_file(chat_id, file_path, filename)
 
         # Build absolute download URL
