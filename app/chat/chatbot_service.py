@@ -147,6 +147,13 @@ class ChatBotService:
 
         # Get conversation context
         context = self.state_manager.get_or_create_context(chat_id)
+        
+        # Sync uploaded files from conversation to state manager
+        for uploaded_file in conversation.uploaded_files:
+            if uploaded_file not in context.uploaded_files:
+                context.uploaded_files.append(uploaded_file)
+        if conversation.uploaded_files:
+            logger.info(f"Synced {len(conversation.uploaded_files)} files to state manager context")
 
         # Process message through handler chain
         message_data = {"chat_id": chat_id, "text": message_text}
@@ -191,6 +198,14 @@ class ChatBotService:
         if not conversation:
             return {"success": False, "error": "Conversation not found"}
 
+        # Add file to conversation's uploaded_files list
+        if file_path not in conversation.uploaded_files:
+            conversation.uploaded_files.append(file_path)
+            # Save file to database
+            self.repository.database.save_file(chat_id, file_path, "uploaded")
+            self.repository.update_conversation(conversation)
+            logger.info(f"Added file to conversation.uploaded_files and database: {file_path}")
+
         # Add file message to conversation
         self.repository.add_message(
             chat_id,
@@ -199,8 +214,14 @@ class ChatBotService:
             {"file_path": file_path, "filename": filename},
         )
 
-        # Get conversation context
+        # Get conversation context and sync uploaded files
         context = self.state_manager.get_or_create_context(chat_id)
+        
+        # Sync uploaded files from conversation to state manager
+        for uploaded_file in conversation.uploaded_files:
+            if uploaded_file not in context.uploaded_files:
+                context.uploaded_files.append(uploaded_file)
+        logger.info(f"Synced {len(conversation.uploaded_files)} files to state manager context")
 
         # Process file upload through handler chain
         message_data = {"chat_id": chat_id, "file_path": file_path, "filename": filename}
@@ -248,6 +269,13 @@ class ChatBotService:
 
         # Get conversation context
         context = self.state_manager.get_or_create_context(chat_id)
+        
+        # Sync uploaded files from conversation to state manager
+        for uploaded_file in conversation.uploaded_files:
+            if uploaded_file not in context.uploaded_files:
+                context.uploaded_files.append(uploaded_file)
+        if conversation.uploaded_files:
+            logger.info(f"Synced {len(conversation.uploaded_files)} files to state manager context")
 
         # Process confirmation through handler chain
         message_data = {
