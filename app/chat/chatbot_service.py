@@ -147,7 +147,7 @@ class ChatBotService:
 
         # Get conversation context
         context = self.state_manager.get_or_create_context(chat_id)
-        
+
         # Sync uploaded files from conversation to state manager
         for uploaded_file in conversation.uploaded_files:
             if uploaded_file not in context.uploaded_files:
@@ -216,7 +216,7 @@ class ChatBotService:
 
         # Get conversation context and sync uploaded files
         context = self.state_manager.get_or_create_context(chat_id)
-        
+
         # Sync uploaded files from conversation to state manager
         for uploaded_file in conversation.uploaded_files:
             if uploaded_file not in context.uploaded_files:
@@ -269,7 +269,7 @@ class ChatBotService:
 
         # Get conversation context
         context = self.state_manager.get_or_create_context(chat_id)
-        
+
         # Sync uploaded files from conversation to state manager
         for uploaded_file in conversation.uploaded_files:
             if uploaded_file not in context.uploaded_files:
