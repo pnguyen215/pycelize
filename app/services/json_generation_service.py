@@ -17,6 +17,7 @@ import numpy as np
 from app.core.config import Config
 from app.core.exceptions import ValidationError, FileProcessingError
 from app.core.logging import get_logger
+from app.utils.template_parser import TemplateParser
 
 logger = get_logger(__name__)
 
@@ -323,8 +324,7 @@ class JSONGenerationService:
         Recursively substitute placeholders in template structure.
         
         This method handles different types (dict, list, string, number)
-        and replaces placeholders using regex patterns. It preserves
-        data types where appropriate.
+        and replaces placeholders using enhanced syntax with the TemplateParser.
         
         Args:
             template_obj: Template object/structure
@@ -335,8 +335,8 @@ class JSONGenerationService:
             Substituted object/structure
             
         Example:
-            >>> template = {"id": "{user_id}", "name": "{first} {last}"}
-            >>> row_data = {"user_id": 1, "first": "John", "last": "Doe"}
+            >>> template = {"id": "{user_id:int}", "name": "{first} {last}"}
+            >>> row_data = {"user_id": "1", "first": "John", "last": "Doe"}
             >>> result = service._substitute_placeholders(template, row_data, {})
             >>> print(result)
             {'id': '1', 'name': 'John Doe'}
@@ -356,67 +356,39 @@ class JSONGenerationService:
             ]
         
         elif isinstance(template_obj, str):
-            # Replace placeholders in string
-            # Support formats: {placeholder}, {placeholder:type}, {placeholder|default}
+            # Replace placeholders in string using TemplateParser
             result = template_obj
             
             # Find all placeholders in the string
-            placeholder_pattern = r'\{([^}]+)\}'
-            matches = re.findall(placeholder_pattern, result)
+            placeholders = TemplateParser.find_all_placeholders(result)
             
-            for match in matches:
-                # Parse placeholder syntax
-                parts = match.split(':')
-                placeholder = parts[0].strip()
-                type_hint = parts[1].strip() if len(parts) > 1 else None
-                
-                # Check for default value syntax
-                if '|' in placeholder:
-                    placeholder, default = placeholder.split('|', 1)
-                    placeholder = placeholder.strip()
-                    default = default.strip()
-                else:
-                    default = None
+            for placeholder_text in placeholders:
+                # Parse the placeholder to extract name, type, and default
+                name, type_hint, default_value = TemplateParser.parse_placeholder(placeholder_text)
                 
                 # Get value from row_data
-                value = row_data.get(placeholder)
+                value = row_data.get(name)
                 
                 # Handle None/null values
-                if value is None:
-                    if default is not None:
-                        value = default
+                if value is None or pd.isna(value):
+                    if default_value is not None:
+                        value = default_value
                     else:
                         value = None
                 
                 # Apply type conversion if specified
-                if value is not None and type_hint:
-                    try:
-                        if type_hint == 'int':
-                            value = int(float(value)) if value != '' else None
-                        elif type_hint == 'float':
-                            value = float(value) if value != '' else None
-                        elif type_hint == 'bool':
-                            if isinstance(value, str):
-                                value = value.lower() in ('true', '1', 'yes', 'on')
-                            else:
-                                value = bool(value)
-                        elif type_hint == 'datetime':
-                            # Keep as string if already ISO format
-                            value = str(value)
-                    except (ValueError, TypeError):
-                        # If conversion fails, keep original value
-                        pass
+                converted_value = TemplateParser.convert_value(value, type_hint)
                 
                 # Replace placeholder with value
-                placeholder_full = f'{{{match}}}'
-                if value is None:
+                placeholder_full = f'{{{placeholder_text}}}'
+                if converted_value is None:
                     # If the entire string is just the placeholder, return None
                     if result == placeholder_full:
                         return None
-                    # Otherwise replace with empty string or "null"
+                    # Otherwise replace with empty string
                     result = result.replace(placeholder_full, '')
                 else:
-                    result = result.replace(placeholder_full, str(value))
+                    result = result.replace(placeholder_full, str(converted_value))
             
             return result
         
