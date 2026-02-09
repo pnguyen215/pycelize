@@ -601,8 +601,10 @@ Type **help** for more information or just tell me what you'd like to do!"""
         if not latest_file:
             return {"success": False, "error": "No uploaded file found"}
 
-        # Generate job ID
-        job_id = f"{chat_id}_workflow_{uuid.uuid4().hex[:8]}"
+        # Generate job ID with timestamp to prevent collisions
+        import time
+        timestamp = int(time.time() * 1000)  # milliseconds
+        job_id = f"{chat_id}_workflow_{timestamp}_{uuid.uuid4().hex[:8]}"
 
         # Get background executor
         executor = get_background_executor()
