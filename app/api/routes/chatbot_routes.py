@@ -237,6 +237,10 @@ def confirm_bot_workflow(chat_id: str):
     """
     Confirm or decline a suggested workflow.
     
+    This endpoint now runs workflows asynchronously in the background for better performance.
+    The API returns immediately with a 202 Accepted status when a workflow is submitted.
+    Use the WebSocket connection or the status endpoint to track workflow progress.
+    
     Args:
         chat_id: Conversation identifier
     
@@ -247,7 +251,7 @@ def confirm_bot_workflow(chat_id: str):
         }
     
     Returns:
-        JSON response with execution results
+        JSON response with job submission info (202) or execution results (200 for sync)
         
     Example:
         curl -X POST http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/confirm \\
@@ -265,8 +269,10 @@ def confirm_bot_workflow(chat_id: str):
         confirmed = data.get("confirmed", False)
         modified_workflow = data.get("modified_workflow")
 
-        # Confirm workflow
-        result = chatbot_service.confirm_workflow(chat_id, confirmed, modified_workflow)
+        # Confirm workflow with async execution (run_async=True)
+        result = chatbot_service.confirm_workflow(
+            chat_id, confirmed, modified_workflow, run_async=True
+        )
 
         # Check if successful
         if not result.get("success", False):
@@ -274,6 +280,24 @@ def confirm_bot_workflow(chat_id: str):
             response = ResponseBuilder.error(error_msg, 400)
             return jsonify(response), 400
 
+        # If workflow was submitted for background execution
+        if result.get("status") == "submitted":
+            job_id = result.get("job_id")
+            
+            # Build response for async execution
+            response = ResponseBuilder.success(
+                data={
+                    "job_id": job_id,
+                    "status": "submitted",
+                    "message": "Workflow submitted for execution. Use WebSocket or check status endpoint for progress.",
+                    "bot_response": "🚀 Workflow submitted! I'm processing your request in the background. You'll receive real-time updates via WebSocket.",
+                },
+                message="Workflow submitted for background execution",
+            )
+            
+            return jsonify(response), 202  # 202 Accepted
+
+        # Otherwise, return standard response (for declined workflows or immediate responses)
         # Add download URLs to output files if present
         output_files_with_urls = []
         if result.get("output_files"):
@@ -383,6 +407,50 @@ def get_bot_conversation_history(chat_id: str):
     except Exception as e:
         logger.error(f"Failed to get bot conversation history: {str(e)}")
         response = ResponseBuilder.error(f"Failed to get history: {str(e)}", 500)
+        return jsonify(response), 500
+
+
+
+
+@chatbot_bp.route("/bot/conversations/<chat_id>/workflow/status/<job_id>", methods=["GET"])
+def get_workflow_job_status(chat_id: str, job_id: str):
+    """
+    Get the status of a background workflow job.
+
+    Args:
+        chat_id: Conversation identifier
+        job_id: Job identifier returned when workflow was submitted
+
+    Returns:
+        JSON response with job status
+
+    Example:
+        curl -X GET http://localhost:5050/api/v1/chat/bot/conversations/{chat_id}/workflow/status/{job_id}
+    """
+    try:
+        chatbot_service, _, _, _ = get_chatbot_components()
+
+        # Get job status
+        job_status = chatbot_service.get_workflow_job_status(job_id)
+
+        if not job_status:
+            response = ResponseBuilder.error("Job not found", 404)
+            return jsonify(response), 404
+
+        # Build response
+        response = ResponseBuilder.success(
+            data=job_status,
+            message="Job status retrieved successfully",
+        )
+
+        return jsonify(response), 200
+
+    except ValidationError as e:
+        response = ResponseBuilder.error(str(e), 422)
+        return jsonify(response), 422
+    except Exception as e:
+        logger.error(f"Failed to get workflow job status: {str(e)}")
+        response = ResponseBuilder.error(f"Failed to get job status: {str(e)}", 500)
         return jsonify(response), 500
 
 

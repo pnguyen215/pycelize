@@ -248,6 +248,7 @@ class ChatBotService:
         chat_id: str,
         confirmed: bool,
         modified_workflow: Optional[List[Dict[str, Any]]] = None,
+        run_async: bool = False,
     ) -> Dict[str, Any]:
         """
         Confirm or decline workflow execution.
@@ -256,9 +257,10 @@ class ChatBotService:
             chat_id: Conversation ID
             confirmed: Whether workflow is confirmed
             modified_workflow: Optional modified workflow steps
+            run_async: If True, run workflow in background and return immediately
 
         Returns:
-            Bot response
+            Bot response (or job submission info if run_async=True)
         """
         logger.info(f"Workflow {'confirmed' if confirmed else 'declined'} for {chat_id}")
 
@@ -288,7 +290,12 @@ class ChatBotService:
 
         # Handle workflow execution if confirmed
         if confirmed and response.get("action") == "execute_workflow":
-            return self._execute_workflow(chat_id, response["workflow_steps"])
+            if run_async:
+                # Execute in background
+                return self._execute_workflow_background(chat_id, response["workflow_steps"])
+            else:
+                # Execute synchronously (original behavior)
+                return self._execute_workflow(chat_id, response["workflow_steps"])
 
         # Add bot response to conversation
         if response.get("bot_response"):
@@ -566,6 +573,83 @@ I'm here to help you process Excel and CSV files. Here's how we can work togethe
 4. I'll process your file and provide download links
 
 Type **help** for more information or just tell me what you'd like to do!"""
+
+    def _execute_workflow_background(
+        self, chat_id: str, workflow_steps: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Execute workflow steps in background without blocking.
+
+        Args:
+            chat_id: Conversation ID
+            workflow_steps: List of workflow step configurations
+
+        Returns:
+            Job submission response with job_id for tracking
+        """
+        from app.chat.background_executor import get_background_executor
+
+        logger.info(f"Submitting workflow for {chat_id} for background execution")
+
+        # Get conversation
+        conversation = self.repository.get_conversation(chat_id)
+        if not conversation:
+            return {"success": False, "error": "Conversation not found"}
+
+        # Get latest uploaded file
+        latest_file = self.state_manager.get_latest_file(chat_id)
+        if not latest_file:
+            return {"success": False, "error": "No uploaded file found"}
+
+        # Generate job ID
+        job_id = f"{chat_id}_workflow_{uuid.uuid4().hex[:8]}"
+
+        # Get background executor
+        executor = get_background_executor()
+
+        # Define completion callback
+        def on_workflow_complete(success: bool, result: Any, error: Optional[str]):
+            """Callback when workflow completes in background."""
+            try:
+                if success:
+                    logger.info(f"Background workflow for {chat_id} completed successfully")
+                else:
+                    logger.error(f"Background workflow for {chat_id} failed: {error}")
+            except Exception as e:
+                logger.error(f"Error in workflow completion callback: {e}")
+
+        # Submit workflow to background executor
+        executor.submit_workflow(
+            job_id=job_id,
+            workflow_func=self._execute_workflow,
+            chat_id=chat_id,
+            workflow_steps=workflow_steps,
+            on_complete=on_workflow_complete,
+        )
+
+        logger.info(f"Workflow submitted for background execution with job_id: {job_id}")
+
+        return {
+            "success": True,
+            "message": "Workflow submitted for background execution",
+            "job_id": job_id,
+            "status": "submitted",
+        }
+
+    def get_workflow_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the status of a background workflow job.
+
+        Args:
+            job_id: Job identifier
+
+        Returns:
+            Job status information or None if not found
+        """
+        from app.chat.background_executor import get_background_executor
+
+        executor = get_background_executor()
+        return executor.get_job_status(job_id)
 
     def cleanup_old_contexts(self, max_age_seconds: int = 3600) -> int:
         """
