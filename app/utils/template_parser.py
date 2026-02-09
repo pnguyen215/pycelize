@@ -41,9 +41,15 @@ class TemplateParser:
         """
         Parse a placeholder text to extract name, type, and default value.
         
+        Supports the following syntax:
+        - {column}: Basic substitution
+        - {column:type}: With type conversion
+        - {column|default}: With default value
+        - {column:type|default}: With both type and default
+        
         Args:
             placeholder_text: The placeholder text (without braces)
-                             e.g., "name", "age:int", "email|default@example.com"
+                             e.g., "name", "age:int", "email|default@example.com", "count:int|0"
         
         Returns:
             Tuple of (placeholder_name, type_hint, default_value)
@@ -53,18 +59,20 @@ class TemplateParser:
             ('age', 'int', '0')
             >>> TemplateParser.parse_placeholder("name")
             ('name', None, None)
+            >>> TemplateParser.parse_placeholder("email|no-email")
+            ('email', None, 'no-email')
         """
-        # First, split by colon to separate type hint
+        # First, check for default value syntax (splits by |)
+        default_value = None
+        if '|' in placeholder_text:
+            placeholder_text, default_value = placeholder_text.split('|', 1)
+            placeholder_text = placeholder_text.strip()
+            default_value = default_value.strip()
+        
+        # Then, split by colon to separate type hint
         parts = placeholder_text.split(':', 1)
         name_part = parts[0].strip()
         type_hint = parts[1].strip() if len(parts) > 1 else None
-        
-        # Check for default value syntax in the name part
-        default_value = None
-        if '|' in name_part:
-            name_part, default_value = name_part.split('|', 1)
-            name_part = name_part.strip()
-            default_value = default_value.strip()
         
         return name_part, type_hint, default_value
     

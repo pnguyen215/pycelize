@@ -37,7 +37,7 @@ class TestTemplateParser:
 
     def test_parse_placeholder_with_type_and_default(self):
         """Test parsing placeholder with type hint and default value."""
-        name, type_hint, default = TemplateParser.parse_placeholder("count|0:int")
+        name, type_hint, default = TemplateParser.parse_placeholder("count:int|0")
         assert name == "count"
         assert type_hint == "int"
         assert default == "0"
