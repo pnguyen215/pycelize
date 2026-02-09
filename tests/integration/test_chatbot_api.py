@@ -179,7 +179,7 @@ class TestChatBotAPIEndpoints:
         assert response.status_code == 422
     
     def test_confirm_workflow(self, client):
-        """Test confirming workflow."""
+        """Test confirming workflow with async execution."""
         # Create conversation
         create_response = client.post('/api/v1/chat/bot/conversations', json={})
         chat_id = json.loads(create_response.data)['data']['chat_id']
@@ -206,6 +206,20 @@ class TestChatBotAPIEndpoints:
         )
         
         assert response.status_code == 200
+    
+    def test_get_workflow_job_status(self, client):
+        """Test getting workflow job status."""
+        # Create conversation
+        create_response = client.post('/api/v1/chat/bot/conversations', json={})
+        chat_id = json.loads(create_response.data)['data']['chat_id']
+        
+        # Try to get status of non-existent job
+        response = client.get(
+            f'/api/v1/chat/bot/conversations/{chat_id}/workflow/status/nonexistent-job-id'
+        )
+        
+        # Should return 404 for non-existent job
+        assert response.status_code == 404
     
     def test_get_conversation_history(self, client):
         """Test getting conversation history."""
