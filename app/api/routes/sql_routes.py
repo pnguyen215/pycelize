@@ -333,8 +333,13 @@ def generate_custom_sql_to_text():
         - auto_increment: Optional auto-increment config
         - remove_duplicates: Optional boolean (default: false)
     
-    Template placeholders:
-        - {column_name}: Will be replaced with value from mapped column
+    Template placeholders (Enhanced Syntax):
+        - {column_name}: Basic substitution
+        - {column_name:int}: Convert to integer
+        - {column_name:float}: Convert to float
+        - {column_name:bool}: Convert to boolean (TRUE/FALSE)
+        - {column_name:datetime}: Keep as datetime string
+        - {column_name|default}: Use default if value is null
         - {auto_id}: Auto-incremented ID if auto_increment is enabled
         - {current_timestamp}: Current timestamp
     
@@ -343,9 +348,9 @@ def generate_custom_sql_to_text():
     
     Example:
         curl -X POST -F "file=@data.xlsx" \
-             -F 'columns=["Name", "Email"]' \
-             -F 'template=INSERT INTO users (id, name, email, created_at) VALUES ({auto_id}, '\''{name}'\'', '\''{email}'\'', {current_timestamp});' \
-             -F 'column_mapping={"name": "Name", "email": "Email"}' \
+             -F 'columns=["Name", "Email", "Age"]' \
+             -F 'template=INSERT INTO users (id, name, email, age) VALUES ({auto_id}, {name}, {email|no-email}, {age:int});' \
+             -F 'column_mapping={"name": "Name", "email": "Email", "age": "Age"}' \
              -F 'auto_increment={"enabled": true, "column_name": "id", "start_value": 1}' \
              http://localhost:5050/api/v1/sql/generate-custom-to-text
     """

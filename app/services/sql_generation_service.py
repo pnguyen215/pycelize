@@ -16,6 +16,7 @@ from app.core.logging import get_logger
 from app.models.enums import DatabaseType, SQLAutoIncrementType
 from app.models.request import SQLGenerationRequest, AutoIncrementConfig
 from app.builders.sql_builder import SQLBuilder
+from app.utils.template_parser import TemplateParser
 
 logger = get_logger(__name__)
 
@@ -172,7 +173,13 @@ class SQLGenerationService:
 
         Args:
             data: Source DataFrame
-            template: SQL template with placeholders like {column_name}
+            template: SQL template with placeholders supporting enhanced syntax:
+                - {column_name}: Basic substitution
+                - {column_name:int}: Convert to integer
+                - {column_name:float}: Convert to float
+                - {column_name:bool}: Convert to boolean
+                - {column_name:datetime}: Keep as datetime string
+                - {column_name|default}: Use default if value is null
             column_mapping: Mapping of placeholder names to DataFrame columns
             auto_increment: Auto-increment configuration (optional)
 
@@ -188,9 +195,7 @@ class SQLGenerationService:
             # Validate all columns exist before processing rows
             for placeholder, column in column_mapping.items():
                 if column not in data.columns:
-                    raise SQLGenerationError(
-                        f"Column '{column}' not found in data"
-                    )
+                    raise SQLGenerationError(f"Column '{column}' not found in data")
 
             statements = []
             auto_id = (
@@ -199,33 +204,55 @@ class SQLGenerationService:
                 else 1
             )
 
+            # Extract and parse placeholders once (performance optimization)
+            placeholders = TemplateParser.find_all_placeholders(template)
+            parsed_placeholders = []
+            for placeholder_text in placeholders:
+                name, type_hint, default_value = TemplateParser.parse_placeholder(
+                    placeholder_text
+                )
+                parsed_placeholders.append(
+                    (placeholder_text, name, type_hint, default_value)
+                )
+
             for idx, row in data.iterrows():
-                statement = template
-
-                # Replace column placeholders
+                # Build data dictionary for this row
+                row_data = {}
                 for placeholder, column in column_mapping.items():
-                    value = row[column]
+                    row_data[placeholder] = row[column]
 
-                    # Handle NULL values
-                    if pd.isna(value):
-                        sql_value = "NULL"
-                    elif isinstance(value, str):
-                        # Escape single quotes
-                        escaped_value = str(value).replace("'", "''")
-                        sql_value = f"'{escaped_value}'"
-                    elif isinstance(value, (int, float)):
-                        sql_value = str(value)
-                    else:
-                        sql_value = f"'{str(value)}'"
-
-                    statement = statement.replace(f"{{{placeholder}}}", sql_value)
-
-                # Replace auto_id placeholder
+                # Add special placeholders
                 if auto_increment and auto_increment.enabled:
-                    statement = statement.replace("{auto_id}", str(auto_id))
+                    row_data["auto_id"] = auto_id
                     auto_id += 1
 
-                # Replace timestamp placeholder
+                # Use TemplateParser to substitute placeholders with enhanced syntax
+                statement = template
+
+                for (
+                    placeholder_text,
+                    name,
+                    type_hint,
+                    default_value,
+                ) in parsed_placeholders:
+                    # Handle special SQL placeholders that should not be substituted
+                    if name == "current_timestamp":
+                        # Skip - will be handled later
+                        continue
+
+                    # Get value from row_data
+                    value = row_data.get(name)
+
+                    # Substitute the value (for SQL mode)
+                    sql_value = TemplateParser.substitute_value(
+                        template, name, value, type_hint, default_value, for_sql=True
+                    )
+
+                    # Replace placeholder in statement
+                    placeholder_full = f"{{{placeholder_text}}}"
+                    statement = statement.replace(placeholder_full, sql_value)
+
+                # Replace special SQL placeholders
                 statement = statement.replace(
                     "{current_timestamp}", "CURRENT_TIMESTAMP"
                 )
