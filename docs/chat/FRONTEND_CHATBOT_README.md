@@ -50,6 +50,20 @@
 
    **Read this for a quick overview!**
 
+4. **[API_CONFIRM_WORKFLOW.md](./API_CONFIRM_WORKFLOW.md)** 🔧 **API REFERENCE**
+   - **Size**: 1,638 lines (41KB)
+   - **Time to read**: 20-30 minutes
+   - **What's inside**:
+     - Complete Confirm Workflow API documentation
+     - 12 cURL examples for all scenarios
+     - All 8 operations with detailed arguments
+     - Job status tracking guide
+     - WebSocket integration examples
+     - Error handling patterns
+     - Frontend & Backend integration code
+
+   **Read this for detailed API reference!**
+
 ---
 
 ## 🚀 Quick Start (5 Steps, ~35 minutes)
@@ -399,14 +413,16 @@ Hour 3-4: Polish & Deploy
 ### Documentation
 
 - **Main Guide**: [FRONTEND_CHATBOT_INTEGRATION.md](./FRONTEND_CHATBOT_INTEGRATION.md)
-- **Architecture**: [FRONTEND\_\_CHATBOT_ARCHITECTURE.md](./FRONTEND_CHATBOT_ARCHITECTURE.md)
+- **Architecture**: [FRONTEND_CHATBOT_ARCHITECTURE.md](./FRONTEND_CHATBOT_ARCHITECTURE.md)
 - **Summary**: [FRONTEND_CHATBOT_GUIDE.md](./FRONTEND_CHATBOT_GUIDE.md)
+- **API Reference**: [API_CONFIRM_WORKFLOW.md](./API_CONFIRM_WORKFLOW.md)
 
 ### Related Docs
 
-- **Backend API**: [../FRONTEND_CHATBOT_README.md](../FRONTEND_CHATBOT_README.md)
-- **Backend Architecture**: [../BACKEND_CHATBOT.md](./BACKEND_CHATBOT.md)
-- **WebSocket Details**: [./WEBSOCKET_USAGE.md](./WEBSOCKET_USAGE.md)
+- **Backend API**: [BACKEND_CHATBOT.md](./BACKEND_CHATBOT.md)
+- **Backend Architecture**: [BACKEND_CHATBOT.md](./BACKEND_CHATBOT.md)
+- **WebSocket Details**: [../WEBSOCKET_USAGE.md](../WEBSOCKET_USAGE.md)
+- **Async Workflow**: [../ASYNC_WORKFLOW_API.md](../ASYNC_WORKFLOW_API.md)
 
 ### Troubleshooting
 
@@ -437,4 +453,4 @@ Common issues? See the **Troubleshooting** section in [FRONTEND_CHATBOT_INTEGRAT
 
 ---
 
-Last Updated: 2026-02-08
+Last Updated: 2026-02-09
