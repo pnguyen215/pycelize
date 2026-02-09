@@ -225,6 +225,11 @@ class SQLGenerationService:
                     # Parse the placeholder to extract name, type, and default
                     name, type_hint, default_value = TemplateParser.parse_placeholder(placeholder_text)
                     
+                    # Handle special SQL placeholders that should not be substituted
+                    if name == 'current_timestamp':
+                        # Skip - will be handled later
+                        continue
+                    
                     # Get value from row_data
                     value = row_data.get(name)
                     
@@ -242,7 +247,7 @@ class SQLGenerationService:
                     placeholder_full = f'{{{placeholder_text}}}'
                     statement = statement.replace(placeholder_full, sql_value)
                 
-                # Replace timestamp placeholder
+                # Replace special SQL placeholders
                 statement = statement.replace(
                     "{current_timestamp}", "CURRENT_TIMESTAMP"
                 )
