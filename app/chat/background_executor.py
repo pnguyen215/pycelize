@@ -7,10 +7,9 @@ It allows workflows to run asynchronously without blocking the API response.
 
 import logging
 import threading
-from typing import Dict, Any, Optional, Callable, List
+from typing import Dict, Any, Optional, Callable
 from concurrent.futures import ThreadPoolExecutor, Future
 from datetime import datetime
-import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 class BackgroundWorkflowExecutor:
     """
     Manages background execution of workflows using thread pool.
-    
+
     Provides:
     - Non-blocking workflow execution
     - Job status tracking
@@ -34,17 +33,24 @@ class BackgroundWorkflowExecutor:
             max_workers: Maximum number of concurrent workflow executions
         """
         self.max_workers = max_workers
-        self.executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="WorkflowExecutor")
+        self.executor = ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="WorkflowExecutor"
+        )
         self.active_jobs: Dict[str, Dict[str, Any]] = {}
         self.lock = threading.Lock()
-        logger.info(f"BackgroundWorkflowExecutor initialized with {max_workers} workers")
+        logger.info(
+            f"BackgroundWorkflowExecutor initialized with {max_workers} workers"
+        )
 
     def submit_workflow(
         self,
         job_id: str,
         workflow_func: Callable,
         *args,
-        on_complete: Optional[Callable[[bool, Any, Optional[str]], None]] = None,
+        on_complete: Optional[
+            Callable[[bool, Any, Optional[str]], None]
+        ] = None,
         **kwargs
     ) -> str:
         """
@@ -52,15 +58,17 @@ class BackgroundWorkflowExecutor:
 
         Args:
             job_id: Unique job identifier
-            workflow_func: Function to execute (should be the workflow execution function)
+            workflow_func: Function to execute
             *args: Positional arguments for workflow_func
-            on_complete: Optional callback when workflow completes (success, result, error)
+            on_complete: Optional callback (success, result, error)
             **kwargs: Keyword arguments for workflow_func
 
         Returns:
             Job ID for tracking
         """
-        logger.info(f"Submitting workflow job {job_id} for background execution")
+        logger.info(
+            f"Submitting workflow job {job_id} for background execution"
+        )
 
         # Register job
         with self.lock:
@@ -82,54 +90,66 @@ class BackgroundWorkflowExecutor:
                 with self.lock:
                     if job_id in self.active_jobs:
                         self.active_jobs[job_id]["status"] = "running"
-                        self.active_jobs[job_id]["started_at"] = datetime.now().isoformat()
-                
+                        self.active_jobs[job_id]["started_at"] = (
+                            datetime.now().isoformat()
+                        )
+
                 logger.info(f"Starting execution of job {job_id}")
-                
+
                 # Execute the workflow
                 result = workflow_func(*args, **kwargs)
-                
+
                 # Mark as completed
                 with self.lock:
                     if job_id in self.active_jobs:
                         self.active_jobs[job_id]["status"] = "completed"
-                        self.active_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+                        self.active_jobs[job_id]["completed_at"] = (
+                            datetime.now().isoformat()
+                        )
                         self.active_jobs[job_id]["result"] = result
-                
+
                 logger.info(f"Job {job_id} completed successfully")
-                
+
                 # Call completion callback if provided
                 if on_complete:
                     try:
                         on_complete(True, result, None)
                     except Exception as e:
-                        logger.error(f"Error in completion callback for job {job_id}: {e}")
-                
+                        logger.error(
+                            f"Error in completion callback for "
+                            f"job {job_id}: {e}"
+                        )
+
                 return result
 
             except Exception as e:
                 error_msg = str(e)
                 logger.error(f"Job {job_id} failed: {error_msg}")
-                
+
                 # Mark as failed
                 with self.lock:
                     if job_id in self.active_jobs:
                         self.active_jobs[job_id]["status"] = "failed"
-                        self.active_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+                        self.active_jobs[job_id]["completed_at"] = (
+                            datetime.now().isoformat()
+                        )
                         self.active_jobs[job_id]["error"] = error_msg
-                
+
                 # Call completion callback if provided
                 if on_complete:
                     try:
                         on_complete(False, None, error_msg)
                     except Exception as cb_error:
-                        logger.error(f"Error in completion callback for job {job_id}: {cb_error}")
-                
+                        logger.error(
+                            f"Error in completion callback for "
+                            f"job {job_id}: {cb_error}"
+                        )
+
                 raise
 
         # Submit to executor
         future: Future = self.executor.submit(_execute_with_tracking)
-        
+
         # Store future reference
         with self.lock:
             if job_id in self.active_jobs:
@@ -151,7 +171,7 @@ class BackgroundWorkflowExecutor:
         with self.lock:
             if job_id not in self.active_jobs:
                 return None
-            
+
             # Create a copy without the future object
             job_info = self.active_jobs[job_id].copy()
             job_info.pop("future", None)
@@ -170,14 +190,16 @@ class BackgroundWorkflowExecutor:
         with self.lock:
             if job_id not in self.active_jobs:
                 return False
-            
+
             future = self.active_jobs[job_id].get("future")
             if future and future.cancel():
                 self.active_jobs[job_id]["status"] = "cancelled"
-                self.active_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+                self.active_jobs[job_id]["completed_at"] = (
+                    datetime.now().isoformat()
+                )
                 logger.info(f"Job {job_id} cancelled")
                 return True
-            
+
             return False
 
     def cleanup_completed_jobs(self, max_age_seconds: int = 3600):
@@ -185,7 +207,7 @@ class BackgroundWorkflowExecutor:
         Clean up old completed/failed jobs.
 
         Args:
-            max_age_seconds: Maximum age in seconds for completed jobs to keep
+            max_age_seconds: Maximum age in seconds for completed jobs
         """
         now = datetime.now()
         with self.lock:
@@ -198,11 +220,11 @@ class BackgroundWorkflowExecutor:
                         age = (now - completed_at).total_seconds()
                         if age > max_age_seconds:
                             jobs_to_remove.append(job_id)
-            
+
             for job_id in jobs_to_remove:
                 del self.active_jobs[job_id]
                 logger.info(f"Cleaned up old job {job_id}")
-            
+
             if jobs_to_remove:
                 logger.info(f"Cleaned up {len(jobs_to_remove)} old jobs")
 
@@ -214,8 +236,10 @@ class BackgroundWorkflowExecutor:
             Number of active jobs
         """
         with self.lock:
-            return sum(1 for job in self.active_jobs.values() 
-                      if job["status"] in ["pending", "running"])
+            return sum(
+                1 for job in self.active_jobs.values()
+                if job["status"] in ["pending", "running"]
+            )
 
     def shutdown(self, wait: bool = True):
         """
@@ -231,7 +255,7 @@ class BackgroundWorkflowExecutor:
         """Cleanup on deletion."""
         try:
             self.shutdown(wait=False)
-        except:
+        except Exception:
             pass
 
 

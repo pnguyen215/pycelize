@@ -5,7 +5,6 @@ This module provides REST API endpoints for the chat bot feature.
 """
 
 import os
-import uuid
 import logging
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
