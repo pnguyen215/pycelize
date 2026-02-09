@@ -369,8 +369,9 @@ class JSONGenerationService:
                 # Get value from row_data
                 value = row_data.get(name)
                 
-                # Handle None/null values
-                if value is None or pd.isna(value):
+                # Handle None/null/empty values
+                # Treat empty string as None if default is specified
+                if value is None or pd.isna(value) or (isinstance(value, str) and value == '' and default_value is not None):
                     if default_value is not None:
                         value = default_value
                     else:
