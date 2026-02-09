@@ -362,6 +362,38 @@ class JSONGenerationService:
             # Find all placeholders in the string
             placeholders = TemplateParser.find_all_placeholders(result)
             
+            # Special case: if the string is exactly one placeholder with a type hint,
+            # return the typed value directly instead of a string
+            if len(placeholders) == 1:
+                placeholder_text = placeholders[0]
+                placeholder_full = f'{{{placeholder_text}}}'
+                if result == placeholder_full:
+                    # Parse the placeholder
+                    name, type_hint, default_value = TemplateParser.parse_placeholder(placeholder_text)
+                    
+                    # Get value from row_data
+                    value = row_data.get(name)
+                    
+                    # Handle None/null/empty values
+                    if value is None or pd.isna(value) or (isinstance(value, str) and value == '' and default_value is not None):
+                        if default_value is not None:
+                            value = default_value
+                        else:
+                            return None
+                    
+                    # Apply type conversion if specified
+                    converted_value = TemplateParser.convert_value(value, type_hint)
+                    
+                    # Return the typed value directly for JSON types (int, float, bool)
+                    if type_hint in ('int', 'float', 'bool') and converted_value is not None:
+                        return converted_value
+                    
+                    # For other types or no type hint, return as string
+                    if converted_value is None:
+                        return None
+                    return str(converted_value) if not isinstance(converted_value, str) else converted_value
+            
+            # Multiple placeholders or mixed content: replace in string
             for placeholder_text in placeholders:
                 # Parse the placeholder to extract name, type, and default
                 name, type_hint, default_value = TemplateParser.parse_placeholder(placeholder_text)
@@ -383,10 +415,7 @@ class JSONGenerationService:
                 # Replace placeholder with value
                 placeholder_full = f'{{{placeholder_text}}}'
                 if converted_value is None:
-                    # If the entire string is just the placeholder, return None
-                    if result == placeholder_full:
-                        return None
-                    # Otherwise replace with empty string
+                    # Replace with empty string
                     result = result.replace(placeholder_full, '')
                 else:
                     result = result.replace(placeholder_full, str(converted_value))

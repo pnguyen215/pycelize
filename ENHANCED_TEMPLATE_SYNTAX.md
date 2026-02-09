@@ -119,13 +119,13 @@ curl -X POST http://localhost:5050/api/v1/json/generate-with-template \
 [
   {
     "user": {
-      "id": "1",
+      "id": 1,
       "name": "Alice",
-      "age": "25"
+      "age": 25
     },
     "stats": {
-      "score": "95.5",
-      "active": "True"
+      "score": 95.5,
+      "active": true
     },
     "contact": {
       "email": "alice@test.com"
@@ -133,13 +133,13 @@ curl -X POST http://localhost:5050/api/v1/json/generate-with-template \
   },
   {
     "user": {
-      "id": "2",
+      "id": 2,
       "name": "Bob",
-      "age": "30"
+      "age": 30
     },
     "stats": {
-      "score": "88.0",
-      "active": "False"
+      "score": 88.0,
+      "active": false
     },
     "contact": {
       "email": "no-email@example.com"
@@ -148,7 +148,26 @@ curl -X POST http://localhost:5050/api/v1/json/generate-with-template \
 ]
 ```
 
+**Note:** When a JSON template value is a pure placeholder with a type hint (e.g., `"id": "{id:int}"`), the output JSON will contain the native JSON type (number, boolean) instead of a string. Mixed content (e.g., `"display": "ID: {id:int}"`) will produce strings.
+
 ## Special Features
+
+### JSON-Specific Features
+
+#### Native Type Preservation
+When using type hints in JSON templates, the output preserves native JSON types:
+
+**Pure Placeholder (Native Type):**
+```json
+// Template: {"id": "{id:int}", "score": "{score:float}", "active": "{active:bool}"}
+// Output: {"id": 1, "score": 95.5, "active": true}  // Native types
+```
+
+**Mixed Content (String):**
+```json
+// Template: {"display": "User {id:int}", "label": "Score: {score:float}"}
+// Output: {"display": "User 1", "label": "Score: 95.5"}  // Strings
+```
 
 ### SQL-Specific Features
 

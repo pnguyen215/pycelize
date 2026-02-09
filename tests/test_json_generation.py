@@ -306,7 +306,7 @@ file:
         assert json_data["name"] == "Alice"
 
     def test_generate_json_with_template_type_conversion(self, service, output_file):
-        """Test template with type conversion."""
+        """Test template with type conversion producing native JSON types."""
         df = pd.DataFrame(
             {
                 "ID": ["1", "2"],
@@ -337,10 +337,18 @@ file:
         with open(output_file, "r", encoding="utf-8") as f:
             json_data = json.load(f)
 
-        # Values should still be strings after placeholder substitution
-        # (Type conversion happens during substitution but result is string in template)
-        assert json_data[0]["id"] == "1"
-        assert json_data[0]["score"] == "95.5"
+        # Type conversion should produce native JSON types (not strings)
+        assert json_data[0]["id"] == 1  # int, not "1"
+        assert isinstance(json_data[0]["id"], int)
+        
+        assert json_data[0]["score"] == 95.5  # float, not "95.5"
+        assert isinstance(json_data[0]["score"], float)
+        
+        assert json_data[0]["active"] is True  # bool, not "true"
+        assert isinstance(json_data[0]["active"], bool)
+        
+        assert json_data[1]["active"] is False  # bool, not "false"
+        assert isinstance(json_data[1]["active"], bool)
 
     def test_generate_json_with_template_default_values(self, service, output_file):
         """Test template with default values for null."""
@@ -510,3 +518,93 @@ file:
 
         assert result["name"] == "Alice"
         assert result["email"] == ""
+
+    def test_json_native_types_with_pure_placeholders(self, service, output_file):
+        """Test that pure placeholders with type hints produce native JSON types."""
+        df = pd.DataFrame({
+            "ID": ["42", "100"],
+            "Score": ["95.5", "88.2"],
+            "Active": ["true", "false"],
+            "Name": ["Alice", "Bob"],
+        })
+
+        # Template with pure placeholders (each value is just a placeholder)
+        template = {
+            "id": "{id:int}",
+            "score": "{score:float}",
+            "active": "{active:bool}",
+            "name": "{name}",
+        }
+
+        column_mapping = {
+            "id": "ID",
+            "score": "Score",
+            "active": "Active",
+            "name": "Name",
+        }
+
+        service.generate_json_with_template(
+            data=df,
+            template=template,
+            column_mapping=column_mapping,
+            output_path=output_file,
+        )
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            json_data = json.load(f)
+
+        # First record
+        assert json_data[0]["id"] == 42
+        assert isinstance(json_data[0]["id"], int)
+        
+        assert json_data[0]["score"] == 95.5
+        assert isinstance(json_data[0]["score"], float)
+        
+        assert json_data[0]["active"] is True
+        assert isinstance(json_data[0]["active"], bool)
+        
+        assert json_data[0]["name"] == "Alice"
+        assert isinstance(json_data[0]["name"], str)
+
+        # Second record
+        assert json_data[1]["id"] == 100
+        assert json_data[1]["active"] is False
+
+    def test_json_strings_with_mixed_content(self, service, output_file):
+        """Test that placeholders in mixed content produce strings."""
+        df = pd.DataFrame({
+            "ID": ["1"],
+            "Name": ["Alice"],
+        })
+
+        # Template with mixed content (placeholder + text)
+        template = {
+            "display_id": "User ID: {id:int}",
+            "greeting": "Hello {name}!",
+            "combined": "{name} has ID {id:int}",
+        }
+
+        column_mapping = {
+            "id": "ID",
+            "name": "Name",
+        }
+
+        service.generate_json_with_template(
+            data=df,
+            template=template,
+            column_mapping=column_mapping,
+            output_path=output_file,
+        )
+
+        with open(output_file, "r", encoding="utf-8") as f:
+            json_data = json.load(f)
+
+        # All should be strings because of mixed content
+        assert json_data[0]["display_id"] == "User ID: 1"
+        assert isinstance(json_data[0]["display_id"], str)
+        
+        assert json_data[0]["greeting"] == "Hello Alice!"
+        assert isinstance(json_data[0]["greeting"], str)
+        
+        assert json_data[0]["combined"] == "Alice has ID 1"
+        assert isinstance(json_data[0]["combined"], str)

@@ -185,7 +185,7 @@ file:
     def test_json_template_with_int_conversion(
         self, json_service, sample_dataframe, output_file
     ):
-        """Test JSON template with integer type conversion."""
+        """Test JSON template with integer type conversion producing native JSON int."""
         template = {"id": "{id:int}", "name": "{name}"}
         column_mapping = {"id": "ID", "name": "Name"}
 
@@ -199,14 +199,16 @@ file:
         with open(output_file, "r", encoding="utf-8") as f:
             json_data = json.load(f)
 
-        # ID should be converted to int (but still string in JSON)
-        assert json_data[0]["id"] == "1"
-        assert json_data[1]["id"] == "2"
+        # ID should be native int in JSON (not string)
+        assert json_data[0]["id"] == 1
+        assert isinstance(json_data[0]["id"], int)
+        assert json_data[1]["id"] == 2
+        assert isinstance(json_data[1]["id"], int)
 
     def test_json_template_with_float_conversion(
         self, json_service, sample_dataframe, output_file
     ):
-        """Test JSON template with float type conversion."""
+        """Test JSON template with float type conversion producing native JSON float."""
         template = {"id": "{id:int}", "score": "{score:float}"}
         column_mapping = {"id": "ID", "score": "Score"}
 
@@ -220,14 +222,16 @@ file:
         with open(output_file, "r", encoding="utf-8") as f:
             json_data = json.load(f)
 
-        # Score should be float (but string in template)
-        assert "95.5" in json_data[0]["score"]
-        assert "88.0" in json_data[1]["score"]
+        # Score should be native float in JSON (not string)
+        assert json_data[0]["score"] == 95.5
+        assert isinstance(json_data[0]["score"], float)
+        assert json_data[1]["score"] == 88.0
+        assert isinstance(json_data[1]["score"], float)
 
     def test_json_template_with_bool_conversion(
         self, json_service, sample_dataframe, output_file
     ):
-        """Test JSON template with boolean type conversion."""
+        """Test JSON template with boolean type conversion producing native JSON bool."""
         template = {"id": "{id:int}", "active": "{active:bool}"}
         column_mapping = {"id": "ID", "active": "Active"}
 
@@ -241,9 +245,11 @@ file:
         with open(output_file, "r", encoding="utf-8") as f:
             json_data = json.load(f)
 
-        # Boolean should be True/False as string
-        assert json_data[0]["active"] == "True"
-        assert json_data[1]["active"] == "False"
+        # Boolean should be native bool in JSON (not string)
+        assert json_data[0]["active"] is True
+        assert isinstance(json_data[0]["active"], bool)
+        assert json_data[1]["active"] is False
+        assert isinstance(json_data[1]["active"], bool)
 
     def test_json_template_with_datetime_conversion(
         self, json_service, sample_dataframe, output_file
@@ -293,7 +299,7 @@ file:
     def test_json_template_mixed_types(
         self, json_service, sample_dataframe, output_file
     ):
-        """Test JSON template with multiple type conversions."""
+        """Test JSON template with multiple type conversions producing native JSON types."""
         template = {
             "user": {
                 "id": "{id:int}",
@@ -323,12 +329,21 @@ file:
         with open(output_file, "r", encoding="utf-8") as f:
             json_data = json.load(f)
 
-        # First record should have all types properly converted
-        assert json_data[0]["user"]["id"] == "1"
+        # First record should have all types properly converted to native JSON types
+        assert json_data[0]["user"]["id"] == 1
+        assert isinstance(json_data[0]["user"]["id"], int)
+        
         assert json_data[0]["user"]["name"] == "Alice"
-        assert json_data[0]["user"]["age"] == "25"
-        assert "95.5" in json_data[0]["stats"]["score"]
-        assert json_data[0]["stats"]["active"] == "True"
+        assert isinstance(json_data[0]["user"]["name"], str)
+        
+        assert json_data[0]["user"]["age"] == 25
+        assert isinstance(json_data[0]["user"]["age"], int)
+        
+        assert json_data[0]["stats"]["score"] == 95.5
+        assert isinstance(json_data[0]["stats"]["score"], float)
+        
+        assert json_data[0]["stats"]["active"] is True
+        assert isinstance(json_data[0]["stats"]["active"], bool)
 
     def test_sql_template_with_special_chars_and_type(self, sql_service):
         """Test SQL template with special characters and type conversion."""
