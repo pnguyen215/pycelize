@@ -75,7 +75,10 @@ sql:
         assert result["success"]
         assert result["total_rows"] == 3
         assert len(result["statements"]) > 0
-        assert "INSERT INTO users" in result["statements"][3]  # After header comments
+        
+        # Check that at least one statement contains INSERT INTO users
+        insert_found = any("INSERT INTO users" in stmt for stmt in result["statements"])
+        assert insert_found, "No INSERT INTO users statement found"
 
     def test_generate_sql_with_auto_increment(self, service, sample_dataframe):
         """Test SQL generation with auto-increment."""

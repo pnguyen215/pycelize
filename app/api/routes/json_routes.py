@@ -167,18 +167,21 @@ def generate_json_with_template():
         - aggregation_mode: String - "array", "single", "nested" (default: "array")
         - output_filename: Optional string
     
-    Template placeholders:
+    Template placeholders (Enhanced Syntax):
         - {column_name}: Basic substitution
-        - {column_name:type}: With type conversion (int, float, bool, datetime)
-        - {column_name|default}: With default if null
+        - {column_name:int}: Convert to integer
+        - {column_name:float}: Convert to float
+        - {column_name:bool}: Convert to boolean
+        - {column_name:datetime}: Keep as datetime string
+        - {column_name|default}: Use default if value is null
     
     Returns:
         JSON with download URL for the generated JSON file
     
     Example:
         curl -X POST -F "file=@users.xlsx" \\
-             -F 'template={"user":{"id":"{user_id}","name":"{first_name} {last_name}"}}' \\
-             -F 'column_mapping={"user_id":"UserID","first_name":"FirstName","last_name":"LastName"}' \\
+             -F 'template={"user":{"id":"{user_id:int}","name":"{first_name} {last_name}","email":"{email|no-email}"}}' \\
+             -F 'column_mapping={"user_id":"UserID","first_name":"FirstName","last_name":"LastName","email":"Email"}' \\
              -F "aggregation_mode=array" \\
              http://localhost:5050/api/v1/json/generate-with-template
     """
