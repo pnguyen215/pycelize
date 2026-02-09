@@ -205,6 +205,13 @@ class SQLGenerationService:
                 if auto_increment and auto_increment.enabled
                 else 1
             )
+            
+            # Extract and parse placeholders once (performance optimization)
+            placeholders = TemplateParser.find_all_placeholders(template)
+            parsed_placeholders = []
+            for placeholder_text in placeholders:
+                name, type_hint, default_value = TemplateParser.parse_placeholder(placeholder_text)
+                parsed_placeholders.append((placeholder_text, name, type_hint, default_value))
 
             for idx, row in data.iterrows():
                 # Build data dictionary for this row
@@ -219,12 +226,8 @@ class SQLGenerationService:
                 
                 # Use TemplateParser to substitute placeholders with enhanced syntax
                 statement = template
-                placeholders = TemplateParser.find_all_placeholders(template)
                 
-                for placeholder_text in placeholders:
-                    # Parse the placeholder to extract name, type, and default
-                    name, type_hint, default_value = TemplateParser.parse_placeholder(placeholder_text)
-                    
+                for placeholder_text, name, type_hint, default_value in parsed_placeholders:
                     # Handle special SQL placeholders that should not be substituted
                     if name == 'current_timestamp':
                         # Skip - will be handled later

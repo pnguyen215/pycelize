@@ -7,9 +7,10 @@ SQL and JSON generation services.
 
 import os
 import json
+import tempfile
+
 import pytest
 import pandas as pd
-import tempfile
 
 from app.core.config import Config
 from app.services.sql_generation_service import SQLGenerationService

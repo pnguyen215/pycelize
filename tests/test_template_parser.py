@@ -4,9 +4,10 @@ Tests for Template Parser Utility
 This module contains unit tests for the TemplateParser class.
 """
 
+from datetime import datetime
+
 import pytest
 import pandas as pd
-from datetime import datetime
 
 from app.utils.template_parser import TemplateParser
 
