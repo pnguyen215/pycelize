@@ -66,7 +66,8 @@ class IntentClassifier:
                 r"select (?:columns?|fields?)",
                 r"pull (?:out )?(?:columns?|fields?)",
             ],
-            "operations": ["excel/extract-columns", "excel/extract-columns-to-file"],
+            # "operations": ["excel/extract-columns", "excel/extract-columns-to-file"],
+            "operations": ["excel/extract-columns-to-file"],
         },
         IntentType.CONVERT_FORMAT: {
             "keywords": ["convert", "transform", "change to", "make it", "export as"],
@@ -95,7 +96,14 @@ class IntentClassifier:
             "operations": ["normalization/apply"],
         },
         IntentType.GENERATE_SQL: {
-            "keywords": ["sql", "insert", "database", "query", "statement", "generate sql"],
+            "keywords": [
+                "sql",
+                "insert",
+                "database",
+                "query",
+                "statement",
+                "generate sql",
+            ],
             "patterns": [
                 r"generate (?:sql|insert|queries)",
                 r"create (?:sql|insert) (?:statements?|queries)",
@@ -151,7 +159,9 @@ class IntentClassifier:
                 re.compile(pattern, re.IGNORECASE) for pattern in config["patterns"]
             ]
 
-    def classify(self, message: str, context: Optional[Dict[str, Any]] = None) -> Intent:
+    def classify(
+        self, message: str, context: Optional[Dict[str, Any]] = None
+    ) -> Intent:
         """
         Classify user message to determine intent.
 
@@ -186,7 +196,9 @@ class IntentClassifier:
         intent_type, confidence = best_intent
 
         # Get suggested operations
-        suggested_ops = self._generate_suggested_operations(intent_type, message_lower, context)
+        suggested_ops = self._generate_suggested_operations(
+            intent_type, message_lower, context
+        )
 
         # Extract parameters from message
         extracted_params = self._extract_parameters(intent_type, message_lower)
@@ -257,7 +269,8 @@ class IntentClassifier:
                     "operation": "excel/extract-columns-to-file",
                     "arguments": {
                         "columns": columns if columns else ["column1", "column2"],
-                        "remove_duplicates": "unique" in message or "distinct" in message,
+                        "remove_duplicates": "unique" in message
+                        or "distinct" in message,
                     },
                     "description": "Extract specific columns to a new file",
                 }
@@ -303,7 +316,10 @@ class IntentClassifier:
             suggested.append(
                 {
                     "operation": "normalization/apply",
-                    "arguments": {"normalizations": normalizations, "return_report": True},
+                    "arguments": {
+                        "normalizations": normalizations,
+                        "return_report": True,
+                    },
                     "description": "Apply data normalization rules",
                 }
             )
@@ -340,7 +356,11 @@ class IntentClassifier:
                     "operation": "excel/search",
                     "arguments": {
                         "conditions": [
-                            {"column": "column_name", "operator": "equals", "value": "search_value"}
+                            {
+                                "column": "column_name",
+                                "operator": "equals",
+                                "value": "search_value",
+                            }
                         ],
                         "logic": "AND",
                         "output_format": "excel",
@@ -373,7 +393,9 @@ class IntentClassifier:
 
         return suggested
 
-    def _extract_parameters(self, intent_type: IntentType, message: str) -> Dict[str, Any]:
+    def _extract_parameters(
+        self, intent_type: IntentType, message: str
+    ) -> Dict[str, Any]:
         """
         Extract parameters from user message.
 
@@ -463,7 +485,9 @@ class IntentClassifier:
             IntentType.MAP_COLUMNS: "I can rename or remap your column names.",
         }
 
-        base_explanation = explanations.get(intent_type, "I can help you process your file.")
+        base_explanation = explanations.get(
+            intent_type, "I can help you process your file."
+        )
 
         if suggested_ops:
             operation_desc = suggested_ops[0].get("description", "")
