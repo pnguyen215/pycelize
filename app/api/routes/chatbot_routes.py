@@ -30,8 +30,17 @@ def get_chatbot_components():
         raise ValidationError("Chat workflows feature is not enabled")
 
     # Initialize components
-    db_path = chat_config.get("storage", {}).get("sqlite_path", "./automation/sqlite/chat.db")
-    workflows_path = chat_config.get("storage", {}).get("workflows_path", "./automation/workflows")
+    # If config options are missing, use defaults for backward compatibility
+    # E.g, database path, storage paths, partition strategy
+    #   - db_path if not set defaults to ./automation/sqlite/chat.db
+    #   - workflows_path if not set defaults to ./automation/workflows
+    #   - partition_strategy if not set defaults to time-based partitioning
+    db_path = chat_config.get("storage", {}).get(
+        "sqlite_path", "./automation/sqlite/chat.db"
+    )
+    workflows_path = chat_config.get("storage", {}).get(
+        "workflows_path", "./automation/workflows"
+    )
     partition_strategy = chat_config.get("partition", {}).get("strategy", "time-based")
 
     database = ChatDatabase(db_path)
@@ -84,7 +93,9 @@ def create_bot_conversation():
         response = ResponseBuilder.error(str(e), 422)
         return jsonify(response), 422
     except Exception as e:
-        response = ResponseBuilder.error(f"Failed to start bot conversation: {str(e)}", 500)
+        response = ResponseBuilder.error(
+            f"Failed to start bot conversation: {str(e)}", 500
+        )
         return jsonify(response), 500
 
 
@@ -128,7 +139,7 @@ def send_bot_message(chat_id: str):
         if not result.get("success", False):
             error_msg = result.get("error", "Unknown error")
             response = ResponseBuilder.error(error_msg, 400)
-            return jsonify(response), 400
+            return jsonify(response), 200  # 200 to indicate bot processed the message
 
         # Build response
         response = ResponseBuilder.success(
@@ -203,9 +214,7 @@ def upload_bot_file(chat_id: str):
         result = chatbot_service.upload_file(chat_id, file_path, filename)
 
         # Build absolute download URL
-        download_url = (
-            f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}"
-        )
+        download_url = f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}"
 
         # Build response
         response = ResponseBuilder.success(
@@ -282,7 +291,7 @@ def confirm_bot_workflow(chat_id: str):
         # If workflow was submitted for background execution
         if result.get("status") == "submitted":
             job_id = result.get("job_id")
-            
+
             # Build response for async execution
             response = ResponseBuilder.success(
                 data={
@@ -293,7 +302,7 @@ def confirm_bot_workflow(chat_id: str):
                 },
                 message="Workflow submitted for background execution",
             )
-            
+
             return jsonify(response), 202  # 202 Accepted
 
         # Otherwise, return standard response (for declined workflows or immediate responses)
@@ -409,9 +418,9 @@ def get_bot_conversation_history(chat_id: str):
         return jsonify(response), 500
 
 
-
-
-@chatbot_bp.route("/bot/conversations/<chat_id>/workflow/status/<job_id>", methods=["GET"])
+@chatbot_bp.route(
+    "/bot/conversations/<chat_id>/workflow/status/<job_id>", methods=["GET"]
+)
 def get_workflow_job_status(chat_id: str, job_id: str):
     """
     Get the status of a background workflow job.
@@ -492,7 +501,9 @@ def delete_bot_conversation(chat_id: str):
         return jsonify(response), 422
     except Exception as e:
         logger.error(f"Failed to delete bot conversation: {str(e)}")
-        response = ResponseBuilder.error(f"Failed to delete conversation: {str(e)}", 500)
+        response = ResponseBuilder.error(
+            f"Failed to delete conversation: {str(e)}", 500
+        )
         return jsonify(response), 500
 
 

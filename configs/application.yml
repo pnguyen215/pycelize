@@ -132,9 +132,9 @@ chat_workflows:
 
   # Storage paths
   storage:
-    workflows_path: "./automation/workflows"
-    dumps_path: "./automation/dumps"
-    sqlite_path: "./automation/sqlite/chat.db"
+    workflows_path: "./automation/workflows" # Path to store workflow definitions
+    dumps_path: "./automation/dumps" # Path to store dumps
+    sqlite_path: "./automation/sqlite/chat.db" # SQLite database path
 
   # Backup configuration
   backup:
@@ -151,23 +151,23 @@ chat_workflows:
 
   # File handling
   file:
-    max_upload_size_mb: 50
+    max_upload_size_mb: 50 # Maximum upload size in MB
     allowed_extensions:
       - ".csv"
       - ".xlsx"
       - ".xls"
       - ".json"
-    chunk_size_bytes: 8192
+    chunk_size_bytes: 8192 # 8 KB, for streaming uploads/downloads
 
   # Workflow execution
   execution:
-    max_steps: 50
-    step_timeout_seconds: 300
-    stream_progress: true
-    save_intermediate_files: true
+    max_steps: 50 # Maximum steps per workflow
+    step_timeout_seconds: 300 # Timeout per step in seconds
+    stream_progress: true # Stream progress updates to client
+    save_intermediate_files: true # Save intermediate files during execution
 
   # Dump and restore
   dump:
     compression: "gzip" # Options: gzip, zip, tar
-    include_metadata: true
-    include_logs: true
+    include_metadata: true # Include metadata in dumps
+    include_logs: true # Include logs in dumps
