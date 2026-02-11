@@ -257,7 +257,7 @@ class ConversationRepository:
             Restored Conversation object
         """
         # Restore files and extract metadata from archive
-        chat_id, partition_key, conversation_metadata = self.storage.restore_conversation(
+        restored_chat_id, partition_key, conversation_metadata = self.storage.restore_conversation(
             dump_file_path, new_chat_id
         )
 
@@ -266,7 +266,9 @@ class ConversationRepository:
             # Update chat_id if new one was specified
             if new_chat_id:
                 conversation_metadata["chat_id"] = new_chat_id
-            conversation_metadata["partition_key"] = partition_key
+                conversation_metadata["partition_key"] = partition_key
+            else:
+                conversation_metadata["partition_key"] = partition_key
             
             # Save conversation to database
             self.database.save_conversation(conversation_metadata)
@@ -274,7 +276,7 @@ class ConversationRepository:
             # Restore messages to database
             for message_data in conversation_metadata.get("messages", []):
                 self.database.save_message(
-                    chat_id,
+                    restored_chat_id,
                     message_data["message_id"],
                     message_data["message_type"],
                     message_data["content"],
@@ -285,7 +287,7 @@ class ConversationRepository:
             # Restore workflow steps to database
             for step_data in conversation_metadata.get("workflow_steps", []):
                 self.database.save_workflow_step(
-                    chat_id,
+                    restored_chat_id,
                     step_data["step_id"],
                     step_data["operation"],
                     step_data["arguments"],
@@ -300,15 +302,15 @@ class ConversationRepository:
             
             # Restore file metadata to database
             for file_path in conversation_metadata.get("uploaded_files", []):
-                self.database.save_file(chat_id, file_path, "uploaded")
+                self.database.save_file(restored_chat_id, file_path, "uploaded")
             for file_path in conversation_metadata.get("output_files", []):
-                self.database.save_file(chat_id, file_path, "output")
+                self.database.save_file(restored_chat_id, file_path, "output")
             
             return self._dict_to_conversation(conversation_metadata)
         else:
             # Fallback: Try to load basic metadata from the conversation directory
             # This handles old dumps that might not have conversation_metadata.json
-            conv_dict = self.database.get_conversation(chat_id)
+            conv_dict = self.database.get_conversation(restored_chat_id)
             if not conv_dict:
                 raise ValueError("Could not restore conversation: metadata not found in archive")
             

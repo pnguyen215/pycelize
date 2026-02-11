@@ -256,16 +256,11 @@ class ConversationStorage:
             # If conversation metadata provided, add it to the archive
             if conversation_metadata:
                 # Create a temporary file for the metadata
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp_file:
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=True) as tmp_file:
                     json.dump(conversation_metadata, tmp_file, indent=2)
-                    tmp_metadata_path = tmp_file.name
-                
-                try:
+                    tmp_file.flush()
                     # Add the metadata file to the archive at the root level
-                    tar.add(tmp_metadata_path, arcname=f"{chat_id}/conversation_metadata.json")
-                finally:
-                    # Clean up temporary file
-                    os.unlink(tmp_metadata_path)
+                    tar.add(tmp_file.name, arcname=f"{chat_id}/conversation_metadata.json")
 
         return dump_file_path
 
