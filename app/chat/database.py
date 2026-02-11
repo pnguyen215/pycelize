@@ -155,7 +155,7 @@ class ChatDatabase:
             # Add step_id column to existing files table
             try:
                 conn.execute("ALTER TABLE files ADD COLUMN step_id TEXT")
-                # Add foreign key constraint by recreating the index
+                # Create index on step_id for query performance
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_files_step ON files(step_id)")
             except sqlite3.OperationalError:
                 # Column might already exist, ignore

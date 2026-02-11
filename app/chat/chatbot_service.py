@@ -462,6 +462,12 @@ class ChatBotService:
             storage = self.repository.storage
 
             output_files = []
+            # Validate that results correspond to steps
+            if len(results) != len(steps):
+                logger.warning(
+                    f"Mismatch between results ({len(results)}) and steps ({len(steps)}) for chat_id: {chat_id}"
+                )
+            
             for i, result in enumerate(results):
                 if result.get("output_file_path"):
                     saved_path = storage.save_output_file(
@@ -471,7 +477,10 @@ class ChatBotService:
                         is_final=(i == len(results) - 1),
                     )
                     # Get the step_id for this result (results and steps are in the same order)
+                    # Use None if index is out of bounds
                     step_id = steps[i].step_id if i < len(steps) else None
+                    if step_id is None and i < len(steps):
+                        logger.warning(f"No step_id found for result {i} in chat_id: {chat_id}")
                     self.repository.database.save_file(chat_id, saved_path, "output", step_id)
                     output_files.append(saved_path)
 
