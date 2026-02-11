@@ -382,15 +382,23 @@ def get_bot_conversation_history(chat_id: str):
                 }
             )
 
+        # Create a mapping of output_file path to step_id from workflow_steps
+        output_file_to_step_id = {}
+        for step_dict in result.get("workflow_steps", []):
+            if step_dict.get("output_file"):
+                output_file_to_step_id[step_dict["output_file"]] = step_dict["step_id"]
+
         output_files_with_urls = []
         for file_path in result.get("output_files", []):
             filename = os.path.basename(file_path)
-            output_files_with_urls.append(
-                {
-                    "file_path": file_path,
-                    "download_url": f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}",
-                }
-            )
+            file_entry = {
+                "file_path": file_path,
+                "download_url": f"{request.scheme}://{request.host}/api/v1/chat/workflows/{chat_id}/files/{filename}",
+            }
+            # Add step_id if we can find a matching workflow step
+            if file_path in output_file_to_step_id:
+                file_entry["step_id"] = output_file_to_step_id[file_path]
+            output_files_with_urls.append(file_entry)
 
         # Build response
         response = ResponseBuilder.success(

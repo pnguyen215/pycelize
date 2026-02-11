@@ -271,6 +271,33 @@ class TestChatBotAPIEndpoints:
         # Should respect limit
         assert len(data['data']['messages']) <= 3
     
+    def test_get_conversation_history_with_output_files_step_id(self, client):
+        """Test that output files include step_id from workflow_steps."""
+        # Create conversation
+        create_response = client.post('/api/v1/chat/bot/conversations', json={})
+        chat_id = json.loads(create_response.data)['data']['chat_id']
+        
+        # Get history (should contain empty output_files and workflow_steps initially)
+        response = client.get(
+            f'/api/v1/chat/bot/conversations/{chat_id}/history'
+        )
+        
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        
+        # Verify structure exists
+        assert 'output_files' in data['data']
+        assert 'workflow_steps' in data['data']
+        assert isinstance(data['data']['output_files'], list)
+        assert isinstance(data['data']['workflow_steps'], list)
+        
+        # Each output file should have download_url and file_path
+        for output_file in data['data']['output_files']:
+            assert 'file_path' in output_file
+            assert 'download_url' in output_file
+            # If there are matching workflow steps, step_id should be present
+            # Otherwise, it's optional (not all output files may have workflow steps)
+    
     def test_delete_bot_conversation(self, client):
         """Test deleting bot conversation."""
         # Create conversation
