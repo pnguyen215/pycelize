@@ -128,15 +128,27 @@ class AutoIncrementConfig:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AutoIncrementConfig":
-        """Create config from dictionary."""
+        """Create config from dictionary.
+        
+        Supports both camelCase (API) and snake_case (Python) keys.
+        """
         if not data:
             return cls()
+        
+        # Helper function to get value from both camelCase and snake_case keys
+        def get_value(key_snake: str, key_camel: str, default: Any = None) -> Any:
+            if key_snake in data:
+                return data[key_snake]
+            if key_camel in data:
+                return data[key_camel]
+            return default
+        
         return cls(
             enabled=data.get("enabled", False),
-            column_name=data.get("column_name", "id"),
-            increment_type=data.get("increment_type", "postgresql_serial"),
-            start_value=data.get("start_value", 1),
-            sequence_name=data.get("sequence_name"),
+            column_name=get_value("column_name", "columnName", "id"),
+            increment_type=get_value("increment_type", "incrementType", "postgresql_serial"),
+            start_value=get_value("start_value", "startValue", 1),
+            sequence_name=get_value("sequence_name", "sequenceName"),
         )
 
 

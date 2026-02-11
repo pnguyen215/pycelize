@@ -483,3 +483,79 @@ file:
         assert "VALUES (1, 'Alice')" in statements[0]
         assert "VALUES (2, 'Bob')" in statements[1]
         assert "VALUES (3, 'Charlie')" in statements[2]
+
+    def test_sql_template_with_camelcase_auto_increment_config(self, sql_service):
+        """Test that camelCase API parameters work correctly."""
+        # Create test data
+        df = pd.DataFrame(
+            {
+                "Name": ["Alice", "Bob", "Charlie"],
+                "Email": ["alice@test.com", "bob@test.com", "charlie@test.com"],
+            }
+        )
+        
+        # Use camelCase keys as they come from the API
+        auto_config_dict = {
+            "enabled": True,
+            "columnName": "id",  # camelCase
+            "incrementType": "SERIAL",  # camelCase
+            "startValue": 10,  # camelCase - the key issue!
+            "sequenceName": "id_seq",  # camelCase
+        }
+        auto_config = AutoIncrementConfig.from_dict(auto_config_dict)
+        
+        template = "INSERT INTO users (id, username, email) VALUES ({id}, {col1}, {col2});"
+        column_mapping = {"col1": "Name", "col2": "Email"}
+        
+        statements = sql_service.generate_custom_sql(
+            df, template, column_mapping, auto_config
+        )
+        
+        assert len(statements) == 3
+        # Verify startValue is respected (should start from 10, not 1)
+        assert "VALUES (10, 'Alice', 'alice@test.com')" in statements[0]
+        assert "VALUES (11, 'Bob', 'bob@test.com')" in statements[1]
+        assert "VALUES (12, 'Charlie', 'charlie@test.com')" in statements[2]
+        
+        # Verify other config fields were parsed correctly
+        assert auto_config.column_name == "id"
+        assert auto_config.start_value == 10
+        assert auto_config.increment_type == "SERIAL"
+        assert auto_config.sequence_name == "id_seq"
+
+    def test_sql_template_with_snake_case_auto_increment_config(self, sql_service):
+        """Test that snake_case Python parameters still work correctly."""
+        # Create test data
+        df = pd.DataFrame(
+            {
+                "Name": ["Alice", "Bob"],
+            }
+        )
+        
+        # Use snake_case keys (Python convention)
+        auto_config_dict = {
+            "enabled": True,
+            "column_name": "user_id",  # snake_case
+            "increment_type": "IDENTITY",  # snake_case
+            "start_value": 100,  # snake_case
+            "sequence_name": "user_seq",  # snake_case
+        }
+        auto_config = AutoIncrementConfig.from_dict(auto_config_dict)
+        
+        template = "INSERT INTO users (user_id, name) VALUES ({user_id}, {name});"
+        column_mapping = {"name": "Name"}
+        
+        statements = sql_service.generate_custom_sql(
+            df, template, column_mapping, auto_config
+        )
+        
+        assert len(statements) == 2
+        # Verify startValue is respected
+        assert "VALUES (100, 'Alice')" in statements[0]
+        assert "VALUES (101, 'Bob')" in statements[1]
+        
+        # Verify config fields were parsed correctly
+        assert auto_config.column_name == "user_id"
+        assert auto_config.start_value == 100
+        assert auto_config.increment_type == "IDENTITY"
+        assert auto_config.sequence_name == "user_seq"
