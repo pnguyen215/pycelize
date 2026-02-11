@@ -340,7 +340,9 @@ def generate_custom_sql_to_text():
         - {column_name:bool}: Convert to boolean (TRUE/FALSE)
         - {column_name:datetime}: Keep as datetime string
         - {column_name|default}: Use default if value is null
-        - {auto_id}: Auto-incremented ID if auto_increment is enabled
+        - {auto_id}: Auto-incremented ID if auto_increment is enabled (backward compatibility)
+        - {configured_column_name}: When auto_increment is enabled, use the column_name 
+          from the auto_increment config (e.g., {id} if column_name is "id")
         - {current_timestamp}: Current timestamp
     
     Returns:

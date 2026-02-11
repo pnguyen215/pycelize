@@ -393,3 +393,93 @@ file:
         assert "email = 'alice@test.com'" in statements[0]
         # Second row with NULL email should use default
         assert "email = 'unknown@example.com'" in statements[1]
+
+    def test_sql_template_with_auto_increment_custom_column(self, sql_service):
+        """Test SQL template with auto-increment using custom column name."""
+        # Create test data with no NULL values
+        df = pd.DataFrame(
+            {
+                "Name": ["Alice", "Bob", "Charlie"],
+                "Email": ["alice@test.com", "bob@test.com", "charlie@test.com"],
+            }
+        )
+        
+        # Test with column_name="id" - should replace {id} placeholder
+        auto_config = AutoIncrementConfig(
+            enabled=True,
+            column_name="id",
+            increment_type="postgresql_serial",
+            start_value=1,
+            sequence_name="id_seq",
+        )
+        
+        template = "INSERT INTO users (id, username, email) VALUES ({id}, {col1}, {col2});"
+        column_mapping = {"col1": "Name", "col2": "Email"}
+        
+        statements = sql_service.generate_custom_sql(
+            df, template, column_mapping, auto_config
+        )
+        
+        assert len(statements) == 3
+        # ID should be auto-incremented starting from 1
+        assert "VALUES (1, 'Alice', 'alice@test.com')" in statements[0]
+        assert "VALUES (2, 'Bob', 'bob@test.com')" in statements[1]
+        assert "VALUES (3, 'Charlie', 'charlie@test.com')" in statements[2]
+
+    def test_sql_template_with_auto_increment_custom_start_value(self, sql_service):
+        """Test SQL template with auto-increment using custom start value."""
+        # Create test data
+        df = pd.DataFrame(
+            {
+                "Name": ["Alice", "Bob", "Charlie"],
+            }
+        )
+        
+        # Test with column_name="user_id" and start_value=100
+        auto_config = AutoIncrementConfig(
+            enabled=True,
+            column_name="user_id",
+            increment_type="mysql_auto_increment",
+            start_value=100,
+        )
+        
+        template = "INSERT INTO users (user_id, name) VALUES ({user_id}, {name});"
+        column_mapping = {"name": "Name"}
+        
+        statements = sql_service.generate_custom_sql(
+            df, template, column_mapping, auto_config
+        )
+        
+        assert len(statements) == 3
+        # ID should start from 100 and increment
+        assert "VALUES (100, 'Alice')" in statements[0]
+        assert "VALUES (101, 'Bob')" in statements[1]
+        assert "VALUES (102, 'Charlie')" in statements[2]
+
+    def test_sql_template_with_auto_increment_backward_compatibility(self, sql_service):
+        """Test that auto_id placeholder still works for backward compatibility."""
+        # Create test data
+        df = pd.DataFrame(
+            {
+                "Name": ["Alice", "Bob", "Charlie"],
+            }
+        )
+        
+        auto_config = AutoIncrementConfig(
+            enabled=True,
+            column_name="id",
+            start_value=1,
+        )
+        
+        # Using {auto_id} should still work
+        template = "INSERT INTO users (id, name) VALUES ({auto_id}, {name});"
+        column_mapping = {"name": "Name"}
+        
+        statements = sql_service.generate_custom_sql(
+            df, template, column_mapping, auto_config
+        )
+        
+        assert len(statements) == 3
+        assert "VALUES (1, 'Alice')" in statements[0]
+        assert "VALUES (2, 'Bob')" in statements[1]
+        assert "VALUES (3, 'Charlie')" in statements[2]

@@ -180,6 +180,9 @@ class SQLGenerationService:
                 - {column_name:bool}: Convert to boolean
                 - {column_name:datetime}: Keep as datetime string
                 - {column_name|default}: Use default if value is null
+                - {auto_id}: Auto-incremented ID (for backward compatibility)
+                - {configured_column_name}: When auto_increment is enabled, use the
+                  column_name from config (e.g., {id} if column_name is "id")
             column_mapping: Mapping of placeholder names to DataFrame columns
             auto_increment: Auto-increment configuration (optional)
 
@@ -223,6 +226,9 @@ class SQLGenerationService:
 
                 # Add special placeholders
                 if auto_increment and auto_increment.enabled:
+                    # Use the configured column_name as the placeholder name
+                    row_data[auto_increment.column_name] = auto_id
+                    # Also keep auto_id for backward compatibility
                     row_data["auto_id"] = auto_id
                     auto_id += 1
 
