@@ -326,6 +326,12 @@ class ChatBotService:
         if limit:
             messages = messages[-limit:]
 
+        # Get output files with metadata (includes step_id)
+        output_files_with_metadata = getattr(conversation, '_output_files_with_metadata', [])
+        # If the attribute doesn't exist (old conversations), fall back to simple list
+        if not output_files_with_metadata:
+            output_files_with_metadata = [{"file_path": fp} for fp in conversation.output_files]
+
         return {
             "success": True,
             "chat_id": chat_id,
@@ -334,7 +340,7 @@ class ChatBotService:
             "current_state": context.current_state.value if context else "unknown",
             "messages": [msg.to_dict() for msg in messages],
             "uploaded_files": conversation.uploaded_files,
-            "output_files": conversation.output_files,
+            "output_files": output_files_with_metadata,
             "workflow_steps": [step.to_dict() for step in conversation.workflow_steps],
         }
 
@@ -450,7 +456,7 @@ class ChatBotService:
                     step.completed_at.isoformat() if step.completed_at else None,
                 )
 
-            # Save output files
+            # Save output files with their corresponding step_id
             from app.chat.storage import ConversationStorage
 
             storage = self.repository.storage
@@ -464,7 +470,9 @@ class ChatBotService:
                         result["output_file_path"],
                         is_final=(i == len(results) - 1),
                     )
-                    self.repository.database.save_file(chat_id, saved_path, "output")
+                    # Get the step_id for this result (results and steps are in the same order)
+                    step_id = steps[i].step_id if i < len(steps) else None
+                    self.repository.database.save_file(chat_id, saved_path, "output", step_id)
                     output_files.append(saved_path)
 
             # Update conversation

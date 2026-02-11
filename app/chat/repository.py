@@ -296,6 +296,15 @@ class ConversationRepository:
 
         # Get files from database
         files = self.database.get_files(conv_dict["chat_id"])
+        
+        # Extract output file paths (handle both old format (strings) and new format (dicts))
+        output_files_list = []
+        for output_entry in files.get("output", []):
+            if isinstance(output_entry, dict):
+                output_files_list.append(output_entry["file_path"])
+            else:
+                # Old format - just a string
+                output_files_list.append(output_entry)
 
         # Get messages from database
         messages_data = self.database.get_messages(conv_dict["chat_id"])
@@ -344,7 +353,7 @@ class ConversationRepository:
             participant_name=conv_dict["participant_name"],
             status=ConversationStatus(conv_dict["status"]),
             uploaded_files=files.get("uploaded", []),
-            output_files=files.get("output", []),
+            output_files=output_files_list,
             messages=messages,
             workflow_steps=workflow_steps,
             metadata=conv_dict.get("metadata", {}),
@@ -352,5 +361,8 @@ class ConversationRepository:
             updated_at=updated_at,
             partition_key=conv_dict.get("partition_key"),
         )
+        
+        # Store the full output files structure (with step_id) as an attribute for API use
+        conversation._output_files_with_metadata = files.get("output", [])
 
         return conversation

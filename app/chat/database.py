@@ -72,8 +72,10 @@ class ChatDatabase:
         chat_id TEXT NOT NULL,
         file_path TEXT NOT NULL,
         file_type TEXT NOT NULL,
+        step_id TEXT,
         created_at TEXT NOT NULL,
-        FOREIGN KEY (chat_id) REFERENCES conversations(chat_id) ON DELETE CASCADE
+        FOREIGN KEY (chat_id) REFERENCES conversations(chat_id) ON DELETE CASCADE,
+        FOREIGN KEY (step_id) REFERENCES workflow_steps(step_id) ON DELETE SET NULL
     )
     """
 
@@ -84,6 +86,7 @@ class ChatDatabase:
         "CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id)",
         "CREATE INDEX IF NOT EXISTS idx_steps_chat ON workflow_steps(chat_id)",
         "CREATE INDEX IF NOT EXISTS idx_files_chat ON files(chat_id)",
+        "CREATE INDEX IF NOT EXISTS idx_files_step ON files(step_id)",
     ]
 
     def __init__(self, db_path: str):
@@ -130,9 +133,33 @@ class ChatDatabase:
             for index_sql in self.CREATE_INDEXES:
                 conn.execute(index_sql)
 
+            # Run migrations
+            self._run_migrations(conn)
+
             conn.commit()
         finally:
             conn.close()
+
+    def _run_migrations(self, conn: sqlite3.Connection) -> None:
+        """
+        Run database migrations for schema updates.
+        
+        Args:
+            conn: Database connection
+        """
+        # Check if step_id column exists in files table
+        cursor = conn.execute("PRAGMA table_info(files)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if "step_id" not in columns:
+            # Add step_id column to existing files table
+            try:
+                conn.execute("ALTER TABLE files ADD COLUMN step_id TEXT")
+                # Add foreign key constraint by recreating the index
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_files_step ON files(step_id)")
+            except sqlite3.OperationalError:
+                # Column might already exist, ignore
+                pass
 
     def save_conversation(self, conversation: Dict[str, Any]) -> None:
         """
@@ -287,7 +314,7 @@ class ChatDatabase:
         shutil.copy2(self.db_path, backup_file)
         return backup_file
 
-    def save_file(self, chat_id: str, file_path: str, file_type: str) -> None:
+    def save_file(self, chat_id: str, file_path: str, file_type: str, step_id: Optional[str] = None) -> None:
         """
         Save file metadata to database.
 
@@ -295,21 +322,22 @@ class ChatDatabase:
             chat_id: Conversation identifier
             file_path: Path to the file
             file_type: Type of file (uploaded or output)
+            step_id: Optional workflow step ID that generated this file
         """
         conn = self._get_connection()
         try:
             conn.execute(
                 """
-                INSERT INTO files (chat_id, file_path, file_type, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO files (chat_id, file_path, file_type, step_id, created_at)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (chat_id, file_path, file_type, datetime.utcnow().isoformat()),
+                (chat_id, file_path, file_type, step_id, datetime.utcnow().isoformat()),
             )
             conn.commit()
         finally:
             conn.close()
 
-    def get_files(self, chat_id: str) -> Dict[str, List[str]]:
+    def get_files(self, chat_id: str) -> Dict[str, List]:
         """
         Retrieve all files for a conversation.
 
@@ -317,12 +345,12 @@ class ChatDatabase:
             chat_id: Conversation identifier
 
         Returns:
-            Dictionary with 'uploaded' and 'output' file lists
+            Dictionary with 'uploaded' (list of file paths) and 'output' (list of dicts with file_path and step_id) file lists
         """
         conn = self._get_connection()
         try:
             cursor = conn.execute(
-                "SELECT file_path, file_type FROM files WHERE chat_id = ? ORDER BY created_at",
+                "SELECT file_path, file_type, step_id FROM files WHERE chat_id = ? ORDER BY created_at",
                 (chat_id,),
             )
 
@@ -332,7 +360,11 @@ class ChatDatabase:
                 if file_type == "uploaded":
                     files["uploaded"].append(row["file_path"])
                 elif file_type == "output":
-                    files["output"].append(row["file_path"])
+                    # For output files, include step_id if available
+                    output_entry = {"file_path": row["file_path"]}
+                    if row["step_id"]:
+                        output_entry["step_id"] = row["step_id"]
+                    files["output"].append(output_entry)
 
             return files
         finally:
