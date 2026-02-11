@@ -236,15 +236,10 @@ class ConversationRepository:
         if not conversation:
             raise ValueError(f"Conversation {chat_id} not found")
 
-        # Create file dump
+        # Create file dump with conversation metadata included
         dump_file = self.storage.dump_conversation(
-            chat_id, conversation.partition_key, dump_path, compression
+            chat_id, conversation.partition_key, dump_path, compression, conversation.to_dict()
         )
-
-        # Save conversation metadata to dump directory
-        metadata_file = dump_file.replace(".tar.gz", "_metadata.json")
-        with open(metadata_file, "w") as f:
-            json.dump(conversation.to_dict(), f, indent=2)
 
         return dump_file
 
@@ -261,24 +256,63 @@ class ConversationRepository:
         Returns:
             Restored Conversation object
         """
-        # Restore files
-        chat_id, partition_key = self.storage.restore_conversation(dump_file_path, new_chat_id)
+        # Restore files and extract metadata from archive
+        chat_id, partition_key, conversation_metadata = self.storage.restore_conversation(
+            dump_file_path, new_chat_id
+        )
 
-        # Load metadata
-        metadata_file = dump_file_path.replace(".tar.gz", "_metadata.json")
-        if os.path.exists(metadata_file):
-            with open(metadata_file, "r") as f:
-                conv_dict = json.load(f)
-                if new_chat_id:
-                    conv_dict["chat_id"] = new_chat_id
-                conv_dict["partition_key"] = partition_key
-
-                # Save to database
-                self.database.save_conversation(conv_dict)
-
-                return self._dict_to_conversation(conv_dict)
+        # Check if conversation metadata was found in archive
+        if conversation_metadata:
+            # Update chat_id if new one was specified
+            if new_chat_id:
+                conversation_metadata["chat_id"] = new_chat_id
+            conversation_metadata["partition_key"] = partition_key
+            
+            # Save conversation to database
+            self.database.save_conversation(conversation_metadata)
+            
+            # Restore messages to database
+            for message_data in conversation_metadata.get("messages", []):
+                self.database.save_message(
+                    chat_id,
+                    message_data["message_id"],
+                    message_data["message_type"],
+                    message_data["content"],
+                    message_data.get("metadata", {}),
+                    message_data["created_at"]
+                )
+            
+            # Restore workflow steps to database
+            for step_data in conversation_metadata.get("workflow_steps", []):
+                self.database.save_workflow_step(
+                    chat_id,
+                    step_data["step_id"],
+                    step_data["operation"],
+                    step_data["arguments"],
+                    step_data["status"],
+                    step_data.get("input_file"),
+                    step_data.get("output_file"),
+                    step_data.get("progress", 0),
+                    step_data.get("error_message"),
+                    step_data.get("started_at"),
+                    step_data.get("completed_at")
+                )
+            
+            # Restore file metadata to database
+            for file_path in conversation_metadata.get("uploaded_files", []):
+                self.database.save_file(chat_id, file_path, "uploaded")
+            for file_path in conversation_metadata.get("output_files", []):
+                self.database.save_file(chat_id, file_path, "output")
+            
+            return self._dict_to_conversation(conversation_metadata)
         else:
-            raise ValueError("Metadata file not found in dump")
+            # Fallback: Try to load basic metadata from the conversation directory
+            # This handles old dumps that might not have conversation_metadata.json
+            conv_dict = self.database.get_conversation(chat_id)
+            if not conv_dict:
+                raise ValueError("Could not restore conversation: metadata not found in archive")
+            
+            return self._dict_to_conversation(conv_dict)
 
     def _dict_to_conversation(self, conv_dict: Dict[str, Any]) -> Conversation:
         """

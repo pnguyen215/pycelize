@@ -222,6 +222,7 @@ class ConversationStorage:
         partition_key: str,
         dump_path: str,
         compression: str = "gzip",
+        conversation_metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Create a compressed dump of conversation data.
@@ -231,10 +232,13 @@ class ConversationStorage:
             partition_key: Partition key
             dump_path: Base path for dumps
             compression: Compression format (gzip, tar, zip)
+            conversation_metadata: Full conversation metadata including messages and steps
 
         Returns:
             Path to created dump file
         """
+        import tempfile
+        
         conv_path = self.get_conversation_path(chat_id, partition_key)
         
         # Ensure dump directory exists (resolve to absolute path)
@@ -248,12 +252,26 @@ class ConversationStorage:
         # Create tar.gz archive
         with tarfile.open(dump_file_path, "w:gz") as tar:
             tar.add(conv_path, arcname=chat_id)
+            
+            # If conversation metadata provided, add it to the archive
+            if conversation_metadata:
+                # Create a temporary file for the metadata
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp_file:
+                    json.dump(conversation_metadata, tmp_file, indent=2)
+                    tmp_metadata_path = tmp_file.name
+                
+                try:
+                    # Add the metadata file to the archive at the root level
+                    tar.add(tmp_metadata_path, arcname=f"{chat_id}/conversation_metadata.json")
+                finally:
+                    # Clean up temporary file
+                    os.unlink(tmp_metadata_path)
 
         return dump_file_path
 
     def restore_conversation(
         self, dump_file_path: str, target_chat_id: Optional[str] = None
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str, Optional[Dict[str, Any]]]:
         """
         Restore a conversation from a dump file.
 
@@ -262,9 +280,11 @@ class ConversationStorage:
             target_chat_id: Optional new chat ID (defaults to original)
 
         Returns:
-            Tuple of (chat_id, partition_key)
+            Tuple of (chat_id, partition_key, conversation_metadata)
         """
         import tempfile
+        
+        conversation_metadata = None
         
         # Extract archive to temporary location first
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -280,8 +300,16 @@ class ConversationStorage:
                 # Extract to temporary directory
                 tar.extractall(path=temp_dir)
                 
-                # Read metadata to get partition_key
+                # Read metadata to get partition_key and conversation data
                 temp_conv_path = os.path.join(temp_dir, original_chat_id)
+                
+                # Try to read conversation_metadata.json first (new format)
+                conversation_metadata_path = os.path.join(temp_conv_path, "conversation_metadata.json")
+                if os.path.exists(conversation_metadata_path):
+                    with open(conversation_metadata_path, "r") as f:
+                        conversation_metadata = json.load(f)
+                
+                # Read partition_key from original metadata.json
                 metadata_path = os.path.join(temp_conv_path, "metadata.json")
                 partition_key = ""
                 
@@ -314,4 +342,4 @@ class ConversationStorage:
                     shutil.move(target_partition_path, new_target_path)
                     target_partition_path = new_target_path
 
-        return chat_id, partition_key
+        return chat_id, partition_key, conversation_metadata
