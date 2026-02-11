@@ -497,10 +497,10 @@ file:
         # Use camelCase keys as they come from the API
         auto_config_dict = {
             "enabled": True,
-            "columnName": "id",  # camelCase
-            "incrementType": "SERIAL",  # camelCase
-            "startValue": 10,  # camelCase - the key issue!
-            "sequenceName": "id_seq",  # camelCase
+            "columnName": "id",
+            "incrementType": "SERIAL",
+            "startValue": 10,
+            "sequenceName": "id_seq",
         }
         auto_config = AutoIncrementConfig.from_dict(auto_config_dict)
         
@@ -535,10 +535,10 @@ file:
         # Use snake_case keys (Python convention)
         auto_config_dict = {
             "enabled": True,
-            "column_name": "user_id",  # snake_case
-            "increment_type": "IDENTITY",  # snake_case
-            "start_value": 100,  # snake_case
-            "sequence_name": "user_seq",  # snake_case
+            "column_name": "user_id",
+            "increment_type": "IDENTITY",
+            "start_value": 100,
+            "sequence_name": "user_seq",
         }
         auto_config = AutoIncrementConfig.from_dict(auto_config_dict)
         
@@ -559,3 +559,35 @@ file:
         assert auto_config.start_value == 100
         assert auto_config.increment_type == "IDENTITY"
         assert auto_config.sequence_name == "user_seq"
+
+    def test_sql_template_with_zero_start_value(self, sql_service):
+        """Test that start_value=0 is handled correctly (edge case)."""
+        # Create test data
+        df = pd.DataFrame(
+            {
+                "Name": ["Alice", "Bob"],
+            }
+        )
+        
+        # Test with start_value=0 (should not fall back to default of 1)
+        auto_config_dict = {
+            "enabled": True,
+            "columnName": "id",
+            "startValue": 0,  # Edge case: zero is a valid start value
+        }
+        auto_config = AutoIncrementConfig.from_dict(auto_config_dict)
+        
+        template = "INSERT INTO users (id, name) VALUES ({id}, {name});"
+        column_mapping = {"name": "Name"}
+        
+        statements = sql_service.generate_custom_sql(
+            df, template, column_mapping, auto_config
+        )
+        
+        assert len(statements) == 2
+        # Verify start_value=0 is respected (not defaulting to 1)
+        assert "VALUES (0, 'Alice')" in statements[0]
+        assert "VALUES (1, 'Bob')" in statements[1]
+        
+        # Verify config was parsed correctly
+        assert auto_config.start_value == 0
