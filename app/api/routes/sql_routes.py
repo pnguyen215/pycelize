@@ -372,6 +372,15 @@ def generate_custom_sql_to_text():
         if not template:
             raise ValidationError("template is required")
 
+        # Strip outer quotes that curl --form may include when value is quoted
+        # e.g. --form 'template="UPDATE ..."' sends the value with literal " delimiters
+        if (
+            len(template) >= 2
+            and template[0] == template[-1]
+            and template[0] in ('"', "'")
+        ):
+            template = template[1:-1]
+
         column_mapping_str = request.form.get("column_mapping", "{}")
         column_mapping = json.loads(column_mapping_str)
 

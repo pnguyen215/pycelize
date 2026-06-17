@@ -126,6 +126,11 @@ class TemplateParser:
                     return value.isoformat()
                 return str(value)
 
+            elif type_hint in ("string", "str", "text"):
+                if pd.isna(value):
+                    return None
+                return str(value)
+
             else:
                 # Unknown type hint, return original value
                 return value
@@ -133,6 +138,65 @@ class TemplateParser:
         except (ValueError, TypeError, AttributeError):
             # If conversion fails, return original value
             return value
+
+    @staticmethod
+    def extract_sql_wildcards(placeholder_text: str) -> Tuple[str, str, str]:
+        """
+        Extract SQL wildcard characters (%, _) from the boundaries of a placeholder.
+
+        Handles patterns like {%name:string%} where % are SQL LIKE/ILIKE wildcards.
+        Supports % (any characters) and _ (single character) SQL wildcards.
+
+        Args:
+            placeholder_text: The placeholder text (without outer braces)
+
+        Returns:
+            Tuple of (clean_placeholder_text, sql_prefix, sql_suffix)
+
+        Example:
+            >>> TemplateParser.extract_sql_wildcards("%name:string%")
+            ('name:string', '%', '%')
+            >>> TemplateParser.extract_sql_wildcards("%name%")
+            ('name', '%', '%')
+            >>> TemplateParser.extract_sql_wildcards("name:int")
+            ('name:int', '', '')
+            >>> TemplateParser.extract_sql_wildcards("%name:string%|default")
+            ('name:string|default', '%', '%')
+        """
+        SQL_WILDCARDS = set("%_")
+
+        text = placeholder_text
+        sql_prefix = ""
+        sql_suffix = ""
+
+        # Extract leading SQL wildcards
+        i = 0
+        while i < len(text) and text[i] in SQL_WILDCARDS:
+            sql_prefix += text[i]
+            i += 1
+        text = text[i:]
+
+        # Split off default value part (after '|') before stripping trailing wildcards
+        if "|" in text:
+            base_part, default_part = text.split("|", 1)
+        else:
+            base_part = text
+            default_part = None
+
+        # Extract trailing SQL wildcards from the base_part (name or name:type)
+        j = len(base_part)
+        while j > 0 and base_part[j - 1] in SQL_WILDCARDS:
+            j -= 1
+        sql_suffix = base_part[j:]
+        base_part = base_part[:j]
+
+        # Reconstruct clean placeholder text
+        if default_part is not None:
+            clean_text = f"{base_part}|{default_part}"
+        else:
+            clean_text = base_part
+
+        return clean_text, sql_prefix, sql_suffix
 
     @staticmethod
     def substitute_value(
@@ -242,9 +306,14 @@ class TemplateParser:
         placeholders = TemplateParser.find_all_placeholders(template)
 
         for placeholder_text in placeholders:
+            # Extract SQL wildcards (%, _) from placeholder boundaries before parsing
+            clean_text, sql_prefix, sql_suffix = TemplateParser.extract_sql_wildcards(
+                placeholder_text
+            )
+
             # Parse the placeholder
             name, type_hint, default_value = TemplateParser.parse_placeholder(
-                placeholder_text
+                clean_text
             )
 
             # Get value from data
@@ -254,6 +323,18 @@ class TemplateParser:
             substituted = TemplateParser.substitute_value(
                 result, name, value, type_hint, default_value, for_sql
             )
+
+            # Apply SQL wildcards to quoted string values (e.g. for LIKE/ILIKE patterns)
+            if (
+                for_sql
+                and (sql_prefix or sql_suffix)
+                and substituted not in (None, "NULL")
+                and isinstance(substituted, str)
+                and substituted.startswith("'")
+                and substituted.endswith("'")
+            ):
+                inner = substituted[1:-1]
+                substituted = f"'{sql_prefix}{inner}{sql_suffix}'"
 
             # Replace in template
             placeholder_full = f"{{{placeholder_text}}}"

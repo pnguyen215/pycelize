@@ -242,3 +242,138 @@ class TestTemplateParser:
             "value: {value}", "value", pd.NA, None, None, for_sql=True
         )
         assert result == "NULL"
+
+    # ------------------------------------------------------------------
+    # SQL wildcard (%, _) extraction tests
+    # ------------------------------------------------------------------
+
+    def test_extract_sql_wildcards_both(self):
+        """{%name:string%} extracts prefix '%', suffix '%', clean 'name:string'."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards("%name:string%")
+        assert clean == "name:string"
+        assert prefix == "%"
+        assert suffix == "%"
+
+    def test_extract_sql_wildcards_leading_only(self):
+        """{%name} extracts prefix '%', suffix '', clean 'name'."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards("%name")
+        assert clean == "name"
+        assert prefix == "%"
+        assert suffix == ""
+
+    def test_extract_sql_wildcards_trailing_only(self):
+        """{name%} extracts prefix '', suffix '%', clean 'name'."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards("name%")
+        assert clean == "name"
+        assert prefix == ""
+        assert suffix == "%"
+
+    def test_extract_sql_wildcards_none(self):
+        """Plain placeholder has no wildcards."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards("name:string")
+        assert clean == "name:string"
+        assert prefix == ""
+        assert suffix == ""
+
+    def test_extract_sql_wildcards_with_default(self):
+        """{%name:string%|default} strips wildcards before the | separator."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards(
+            "%name:string%|N/A"
+        )
+        assert clean == "name:string|N/A"
+        assert prefix == "%"
+        assert suffix == "%"
+
+    def test_extract_sql_wildcards_underscore(self):
+        """{_name_} with single-char wildcard _ is extracted correctly."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards("_name_")
+        assert clean == "name"
+        assert prefix == "_"
+        assert suffix == "_"
+
+    def test_extract_sql_wildcards_mixed(self):
+        """{%_name_%} keeps all leading/trailing wildcard characters."""
+        clean, prefix, suffix = TemplateParser.extract_sql_wildcards("%_name_%")
+        assert clean == "name"
+        assert prefix == "%_"
+        assert suffix == "_%"
+
+    # ------------------------------------------------------------------
+    # SQL wildcard substitution in SQL templates
+    # ------------------------------------------------------------------
+
+    def test_substitute_template_sql_ilike_pattern(self):
+        """ILIKE pattern {%name:string%} wraps value with % wildcards."""
+        template = "WHERE col ILIKE {%name:string%}"
+        data = {"name": "foo"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "WHERE col ILIKE '%foo%'"
+
+    def test_substitute_template_sql_like_leading_wildcard(self):
+        """{%name} produces '%value' in SQL."""
+        template = "WHERE col LIKE {%name}"
+        data = {"name": "bar"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "WHERE col LIKE '%bar'"
+
+    def test_substitute_template_sql_like_trailing_wildcard(self):
+        """{name%} produces 'value%' in SQL."""
+        template = "WHERE col LIKE {name%}"
+        data = {"name": "baz"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "WHERE col LIKE 'baz%'"
+
+    def test_substitute_template_sql_wildcard_with_null(self):
+        """NULL value with wildcards stays NULL (no wildcard wrapping)."""
+        template = "WHERE col ILIKE {%name:string%}"
+        data = {"name": None}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "WHERE col ILIKE NULL"
+
+    def test_substitute_template_sql_wildcard_with_default(self):
+        """NULL value uses default, then wildcards are applied."""
+        template = "WHERE col ILIKE {%name:string%|unknown}"
+        data = {"name": None}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "WHERE col ILIKE '%unknown%'"
+
+    def test_substitute_template_sql_wildcard_escapes_quotes(self):
+        """Single quotes inside wildcard values are escaped."""
+        template = "WHERE col ILIKE {%name:string%}"
+        data = {"name": "O'Brien"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "WHERE col ILIKE '%O''Brien%'"
+
+    def test_substitute_template_sql_wildcard_not_applied_to_json(self):
+        """Wildcards are not applied when for_sql=False."""
+        template = "prefix {%name:string%} suffix"
+        data = {"name": "foo"}
+        result = TemplateParser.substitute_template(template, data, for_sql=False)
+        # In non-SQL mode the value is substituted without quotes or wildcards
+        assert "foo" in result
+        assert "'%foo%'" not in result
+
+    # ------------------------------------------------------------------
+    # string type hint
+    # ------------------------------------------------------------------
+
+    def test_convert_value_string_type(self):
+        """'string' type hint converts value to str."""
+        assert TemplateParser.convert_value(42, "string") == "42"
+        assert TemplateParser.convert_value(3.14, "string") == "3.14"
+        assert TemplateParser.convert_value("hello", "string") == "hello"
+        assert TemplateParser.convert_value(None, "string") is None
+
+    def test_substitute_value_sql_string_type_hint(self):
+        """Explicit :string type produces a SQL-quoted value."""
+        result = TemplateParser.substitute_value(
+            "{name:string}", "name", "Alice", "string", None, for_sql=True
+        )
+        assert result == "'Alice'"
+
+    def test_substitute_value_sql_string_type_number(self):
+        """Numeric value with :string type is cast and SQL-quoted."""
+        result = TemplateParser.substitute_value(
+            "{val:string}", "val", 99, "string", None, for_sql=True
+        )
+        assert result == "'99'"

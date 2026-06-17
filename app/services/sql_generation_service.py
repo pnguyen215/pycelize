@@ -211,11 +211,24 @@ class SQLGenerationService:
             placeholders = TemplateParser.find_all_placeholders(template)
             parsed_placeholders = []
             for placeholder_text in placeholders:
+                # Strip SQL wildcard characters (%, _) from placeholder boundaries
+                # so {%name:string%} is parsed as name='name', type='string'
+                # with wildcards tracked separately for LIKE/ILIKE patterns
+                clean_text, sql_prefix, sql_suffix = (
+                    TemplateParser.extract_sql_wildcards(placeholder_text)
+                )
                 name, type_hint, default_value = TemplateParser.parse_placeholder(
-                    placeholder_text
+                    clean_text
                 )
                 parsed_placeholders.append(
-                    (placeholder_text, name, type_hint, default_value)
+                    (
+                        placeholder_text,
+                        name,
+                        type_hint,
+                        default_value,
+                        sql_prefix,
+                        sql_suffix,
+                    )
                 )
 
             for idx, row in data.iterrows():
@@ -240,6 +253,8 @@ class SQLGenerationService:
                     name,
                     type_hint,
                     default_value,
+                    sql_prefix,
+                    sql_suffix,
                 ) in parsed_placeholders:
                     # Handle special SQL placeholders that should not be substituted
                     if name == "current_timestamp":
@@ -253,6 +268,17 @@ class SQLGenerationService:
                     sql_value = TemplateParser.substitute_value(
                         template, name, value, type_hint, default_value, for_sql=True
                     )
+
+                    # Apply SQL wildcards to quoted string values for LIKE/ILIKE patterns
+                    # e.g. {%name:string%} with value 'foo' becomes '%foo%'
+                    if (
+                        (sql_prefix or sql_suffix)
+                        and sql_value != "NULL"
+                        and sql_value.startswith("'")
+                        and sql_value.endswith("'")
+                    ):
+                        inner = sql_value[1:-1]
+                        sql_value = f"'{sql_prefix}{inner}{sql_suffix}'"
 
                     # Replace placeholder in statement
                     placeholder_full = f"{{{placeholder_text}}}"
