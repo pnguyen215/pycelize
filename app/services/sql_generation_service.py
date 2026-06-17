@@ -207,10 +207,16 @@ class SQLGenerationService:
                 else 1
             )
 
-            # Extract and parse placeholders once (performance optimization)
+            # Extract and parse placeholders once (performance optimization).
+            # Deduplicate so each unique placeholder is substituted once per row
+            # via replace_placeholder_sql, which handles all its occurrences.
             placeholders = TemplateParser.find_all_placeholders(template)
+            seen_placeholder_texts: set = set()
             parsed_placeholders = []
             for placeholder_text in placeholders:
+                if placeholder_text in seen_placeholder_texts:
+                    continue
+                seen_placeholder_texts.add(placeholder_text)
                 # Strip SQL wildcard characters (%, _) from placeholder boundaries
                 # so {%name:string%} is parsed as name='name', type='string'
                 # with wildcards tracked separately for LIKE/ILIKE patterns
@@ -245,7 +251,9 @@ class SQLGenerationService:
                     row_data["auto_id"] = auto_id
                     auto_id += 1
 
-                # Use TemplateParser to substitute placeholders with enhanced syntax
+                # Context-aware SQL substitution: each placeholder's occurrences are
+                # replaced independently based on whether they sit inside or outside
+                # a SQL string literal (handles e.g. 'prefix_{col}' correctly).
                 statement = template
 
                 for (
@@ -261,28 +269,18 @@ class SQLGenerationService:
                         # Skip - will be handled later
                         continue
 
-                    # Get value from row_data
                     value = row_data.get(name)
-
-                    # Substitute the value (for SQL mode)
-                    sql_value = TemplateParser.substitute_value(
-                        template, name, value, type_hint, default_value, for_sql=True
-                    )
-
-                    # Apply SQL wildcards to quoted string values for LIKE/ILIKE patterns
-                    # e.g. {%name:string%} with value 'foo' becomes '%foo%'
-                    if (
-                        (sql_prefix or sql_suffix)
-                        and sql_value != "NULL"
-                        and sql_value.startswith("'")
-                        and sql_value.endswith("'")
-                    ):
-                        inner = sql_value[1:-1]
-                        sql_value = f"'{sql_prefix}{inner}{sql_suffix}'"
-
-                    # Replace placeholder in statement
                     placeholder_full = f"{{{placeholder_text}}}"
-                    statement = statement.replace(placeholder_full, sql_value)
+
+                    statement = TemplateParser.replace_placeholder_sql(
+                        statement,
+                        placeholder_full,
+                        value,
+                        type_hint,
+                        default_value,
+                        sql_prefix,
+                        sql_suffix,
+                    )
 
                 # Replace special SQL placeholders
                 statement = statement.replace(

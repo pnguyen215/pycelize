@@ -377,3 +377,167 @@ class TestTemplateParser:
             "{val:string}", "val", 99, "string", None, for_sql=True
         )
         assert result == "'99'"
+
+    # ------------------------------------------------------------------
+    # _is_inside_sql_string_at tests
+    # ------------------------------------------------------------------
+
+    def test_is_inside_sql_string_at_outside(self):
+        """Position at the start is outside a string literal."""
+        assert TemplateParser._is_inside_sql_string_at("") is False
+
+    def test_is_inside_sql_string_at_inside(self):
+        """One opening quote → inside string."""
+        assert TemplateParser._is_inside_sql_string_at("WHERE col = '") is True
+
+    def test_is_inside_sql_string_at_closed(self):
+        """Closed string (even quotes) → outside."""
+        assert TemplateParser._is_inside_sql_string_at("'foo'") is False
+
+    def test_is_inside_sql_string_at_escaped_quote(self):
+        """'' inside a string counts as zero extra quotes (still inside)."""
+        # "WHERE col = 'pre''" → 1 open + 2 (escaped) → still inside
+        assert TemplateParser._is_inside_sql_string_at("WHERE col = 'pre''") is True
+
+    def test_is_inside_sql_string_at_after_concat(self):
+        """Position after 'sample_' prefix (inside an open string)."""
+        assert TemplateParser._is_inside_sql_string_at("status = 'sample_") is True
+
+    # ------------------------------------------------------------------
+    # replace_placeholder_sql tests
+    # ------------------------------------------------------------------
+
+    def test_replace_placeholder_sql_standalone(self):
+        """Standalone placeholder → SQL-quoted value."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = {val:string}", "{val:string}", "foo"
+        )
+        assert result == "SET col = 'foo'"
+
+    def test_replace_placeholder_sql_inside_string(self):
+        """Placeholder embedded inside a SQL string → raw escaped value only."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = 'prefix_{val:string}'", "{val:string}", "foo"
+        )
+        assert result == "SET col = 'prefix_foo'"
+
+    def test_replace_placeholder_sql_mixed_occurrences(self):
+        """Same placeholder appears both standalone and inside a SQL string."""
+        template = "SET a = {val:string}, b = 'tag_{val:string}'"
+        result = TemplateParser.replace_placeholder_sql(template, "{val:string}", "bar")
+        assert result == "SET a = 'bar', b = 'tag_bar'"
+
+    def test_replace_placeholder_sql_inside_string_escapes_quotes(self):
+        """Single quotes inside embedded value are escaped correctly."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = 'sample_{val:string}'", "{val:string}", "O'Brien"
+        )
+        assert result == "SET col = 'sample_O''Brien'"
+
+    def test_replace_placeholder_sql_standalone_escapes_quotes(self):
+        """Single quotes in standalone value are escaped correctly."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = {val:string}", "{val:string}", "O'Brien"
+        )
+        assert result == "SET col = 'O''Brien'"
+
+    def test_replace_placeholder_sql_null_standalone(self):
+        """NULL standalone → NULL keyword."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = {val:string}", "{val:string}", None
+        )
+        assert result == "SET col = NULL"
+
+    def test_replace_placeholder_sql_null_inside_string_no_default(self):
+        """NULL inside string with no default → empty string."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = 'prefix_{val:string}'", "{val:string}", None
+        )
+        assert result == "SET col = 'prefix_'"
+
+    def test_replace_placeholder_sql_null_inside_string_with_default(self):
+        """NULL inside string with default → default value used."""
+        result = TemplateParser.replace_placeholder_sql(
+            "SET col = 'prefix_{val:string}'",
+            "{val:string}",
+            None,
+            default_value="unknown",
+        )
+        assert result == "SET col = 'prefix_unknown'"
+
+    def test_replace_placeholder_sql_wildcard_standalone(self):
+        """Wildcard placeholder ({%val%}) outside string → value wrapped in %."""
+        result = TemplateParser.replace_placeholder_sql(
+            "WHERE col ILIKE {%val:string%}",
+            "{%val:string%}",
+            "foo",
+            sql_prefix="%",
+            sql_suffix="%",
+        )
+        assert result == "WHERE col ILIKE '%foo%'"
+
+    # ------------------------------------------------------------------
+    # substitute_template — embedded SQL string context
+    # ------------------------------------------------------------------
+
+    def test_substitute_template_sql_embedded_string_concat(self):
+        """Full template matching the reported cURL use-case."""
+        template = (
+            "UPDATE t SET a = {loc:string}, b = 'sample_{loc:string}' "
+            "WHERE name ILIKE {%name:string%};"
+        )
+        data = {"loc": "Sin respuesta", "name": "open"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == (
+            "UPDATE t SET a = 'Sin respuesta', b = 'sample_Sin respuesta' "
+            "WHERE name ILIKE '%open%';"
+        )
+
+    def test_substitute_template_sql_embedded_string_with_quotes(self):
+        """Embedded placeholder with apostrophe in value escapes correctly."""
+        template = "SET b = 'tag_{val:string}'"
+        data = {"val": "O'Brien"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "SET b = 'tag_O''Brien'"
+
+    def test_substitute_template_sql_embedded_string_null_no_default(self):
+        """NULL value inside embedded string becomes empty string."""
+        template = "SET b = 'prefix_{val:string}'"
+        data = {"val": None}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "SET b = 'prefix_'"
+
+    def test_substitute_template_sql_embedded_string_null_with_default(self):
+        """NULL value inside embedded string uses default."""
+        template = "SET b = 'prefix_{val:string|N/A}'"
+        data = {"val": None}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "SET b = 'prefix_N/A'"
+
+    def test_substitute_template_sql_multiple_different_embedded(self):
+        """Multiple different placeholders embedded inside the same string."""
+        template = "SET col = '{first:string}_{second:string}'"
+        data = {"first": "hello", "second": "world"}
+        result = TemplateParser.substitute_template(template, data, for_sql=True)
+        assert result == "SET col = 'hello_world'"
+
+    def test_substitute_value_inside_string_literal_flag(self):
+        """inside_string_literal=True returns raw escaped value without quotes."""
+        result = TemplateParser.substitute_value(
+            "", "", "Alice", "string", None, for_sql=True, inside_string_literal=True
+        )
+        assert result == "Alice"
+
+    def test_substitute_value_inside_string_literal_escapes_quotes(self):
+        """inside_string_literal=True still escapes single quotes."""
+        result = TemplateParser.substitute_value(
+            "", "", "O'Brien", None, None, for_sql=True, inside_string_literal=True
+        )
+        assert result == "O''Brien"
+
+    def test_substitute_value_inside_string_literal_null(self):
+        """inside_string_literal=True with None/null still returns NULL keyword."""
+        result = TemplateParser.substitute_value(
+            "", "", None, None, None, for_sql=True, inside_string_literal=True
+        )
+        assert result == "NULL"
