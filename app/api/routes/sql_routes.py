@@ -381,6 +381,8 @@ def generate_custom_sql_to_text():
         ):
             template = template[1:-1]
 
+        sheet_name = request.form.get("sheet_name", "Sheet1") or "Sheet1"
+
         column_mapping_str = request.form.get("column_mapping", "{}")
         column_mapping = json.loads(column_mapping_str)
 
@@ -404,7 +406,7 @@ def generate_custom_sql_to_text():
             excel_service, sql_service = get_services()
 
             # Read data
-            df = excel_service.read_excel(file_path)
+            df = excel_service.read_excel(file_path, sheet_name=sheet_name)
 
             # Extract columns if specified
             if columns:
